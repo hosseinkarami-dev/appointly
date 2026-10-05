@@ -1,0 +1,228 @@
+openapi: 3.1.0
+info:
+  title: Appointly API
+  version: 1.0.0
+  description: Stable REST contract for Appointly clients and Kotlin Multiplatform applications.
+servers:
+  - url: /api/v1
+tags:
+  - name: Auth
+  - name: Public booking
+  - name: Appointments
+  - name: Workspace
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Create an API session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: Authenticated user and bearer token
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /auth/me:
+    get:
+      tags: [Auth]
+      security: [{sanctum: []}]
+      summary: Return the current identity
+      responses:
+        '200':
+          description: Current identity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /public/businesses/{slug}:
+    get:
+      tags: [Public booking]
+      summary: Show a public business
+      parameters:
+        - {$ref: '#/components/parameters/BusinessSlug'}
+      responses:
+        '200':
+          description: Business profile
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Business'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/businesses/{slug}/availability:
+    get:
+      tags: [Public booking]
+      summary: List available appointment slots
+      parameters:
+        - {$ref: '#/components/parameters/BusinessSlug'}
+        - {name: serviceId, in: query, required: true, schema: {type: integer}}
+        - {name: staffId, in: query, required: true, schema: {type: integer}}
+        - {name: date, in: query, required: true, schema: {type: string, format: date}}
+      responses:
+        '200':
+          description: Available slots in UTC
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Slot'}}
+  /public/businesses/{slug}/appointments:
+    post:
+      tags: [Public booking]
+      summary: Create a pending appointment
+      parameters:
+        - {$ref: '#/components/parameters/BusinessSlug'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AppointmentRequest'}
+      responses:
+        '201':
+          description: Appointment created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AppointmentResponse'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /public/appointments/{token}:
+    get:
+      tags: [Public booking]
+      summary: View an appointment using its opaque public token
+      parameters:
+        - {name: token, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Appointment
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AppointmentResponse'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /appointments:
+    get:
+      tags: [Appointments]
+      security: [{sanctum: []}]
+      summary: List tenant appointments
+      parameters:
+        - {name: X-Tenant-Id, in: header, schema: {type: integer}}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/AppointmentStatus'}}
+        - {name: from, in: query, schema: {type: string, format: date}}
+        - {name: to, in: query, schema: {type: string, format: date}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1}}
+      responses:
+        '200':
+          description: Paginated appointments
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PaginatedAppointments'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /appointments/{appointment}/confirm:
+    post:
+      tags: [Appointments]
+      security: [{sanctum: []}]
+      summary: Confirm an appointment
+      parameters: [{name: appointment, in: path, required: true, schema: {type: integer}}]
+      responses:
+        '200': {$ref: '#/components/responses/AppointmentResponse'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /appointments/{appointment}/cancel:
+    post:
+      tags: [Appointments]
+      security: [{sanctum: []}]
+      summary: Cancel an appointment
+      parameters: [{name: appointment, in: path, required: true, schema: {type: integer}}]
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {reason: {type: string, maxLength: 255}}}
+      responses:
+        '200': {$ref: '#/components/responses/AppointmentResponse'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /appointments/{appointment}/complete:
+    post:
+      tags: [Appointments]
+      security: [{sanctum: []}]
+      summary: Complete an appointment
+      parameters: [{name: appointment, in: path, required: true, schema: {type: integer}}]
+      responses:
+        '200': {$ref: '#/components/responses/AppointmentResponse'}
+        '409': {$ref: '#/components/responses/Conflict'}
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: token
+  parameters:
+    BusinessSlug: {name: slug, in: path, required: true, schema: {type: string}}
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string, format: password}
+    AuthResponse:
+      type: object
+      properties:
+        token: {type: string}
+        user: {$ref: '#/components/schemas/User'}
+    User:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        email: {type: string, format: email}
+    Business:
+      type: object
+      properties:
+        data: {type: object}
+    Slot:
+      type: object
+      required: [startAt, endAt]
+      properties:
+        startAt: {type: string, format: date-time}
+        endAt: {type: string, format: date-time}
+    AppointmentRequest:
+      type: object
+      required: [serviceId, staffId, startAt, customer]
+      properties:
+        serviceId: {type: integer}
+        staffId: {type: integer}
+        startAt: {type: string, format: date-time}
+        customer:
+          type: object
+          required: [name, email]
+          properties:
+            name: {type: string}
+            email: {type: string, format: email}
+            phone: {type: string}
+        notes: {type: string}
+    AppointmentStatus: {type: string, enum: [pending, confirmed, cancelled, completed]}
+    Appointment:
+      type: object
+      properties:
+        id: {type: integer}
+        publicToken: {type: string}
+        status: {$ref: '#/components/schemas/AppointmentStatus'}
+        serviceName: {type: string}
+        startAt: {type: string, format: date-time}
+        endAt: {type: string, format: date-time}
+    AppointmentResponse:
+      type: object
+      properties: {data: {$ref: '#/components/schemas/Appointment'}}
+    PaginatedAppointments:
+      type: object
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/Appointment'}}
+        meta: {type: object}
+        links: {type: object}
+  responses:
+    AppointmentResponse:
+      description: Appointment response
+      content: {application/json: {schema: {$ref: '#/components/schemas/AppointmentResponse'}}}
+    Unauthorized: {description: Authentication required}
+    NotFound: {description: Resource not found}
+    Conflict: {description: Appointment conflict or invalid transition}
+    ValidationError: {description: Validation failed}

@@ -1,0 +1,2 @@
+@php($styles = ['pending' => 'bg-amber-100 text-amber-700', 'confirmed' => 'bg-emerald-100 text-emerald-700', 'completed' => 'bg-sky-100 text-sky-700', 'cancelled' => 'bg-rose-100 text-rose-700', 'no_show' => 'bg-orange-100 text-orange-700'])
+<span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $styles[$status] ?? 'bg-slate-100 text-slate-600' }}">{{ str($status)->replace('_', ' ')->title() }}</span>

@@ -1,0 +1,343 @@
+openapi: 3.1.0
+info:
+  title: Appointly API
+  version: 1.0.0
+  description: Versioned API for tenant management, scheduling, availability, and appointment booking.
+servers:
+  - url: /api/v1
+tags:
+  - name: Authentication
+  - name: Business
+  - name: Scheduling
+  - name: Appointments
+  - name: Customers
+paths:
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a user and optional business
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201': { description: Registered successfully }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Create an API token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { description: Authenticated successfully }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /auth/me:
+    get:
+      tags: [Authentication]
+      security: [{ sanctum: [] }]
+      summary: Get the authenticated user and memberships
+      responses:
+        '200': { description: Current identity }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      security: [{ sanctum: [] }]
+      summary: Revoke the current token
+      responses:
+        '204': { description: Token revoked }
+  /services:
+    get:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { $ref: '#/components/responses/ServiceCollection' } }
+    post:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ServiceRequest' } } }
+      responses:
+        '201': { $ref: '#/components/responses/ServiceResponse' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /services/{service}:
+    patch:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { name: service, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ServiceRequest' } } }
+      responses: { '200': { $ref: '#/components/responses/ServiceResponse' }, '404': { $ref: '#/components/responses/NotFound' } }
+    delete:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { name: service, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: Service deactivated }, '404': { $ref: '#/components/responses/NotFound' } }
+  /staff:
+    get:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { $ref: '#/components/responses/StaffCollection' } }
+    post:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffRequest' } } }
+      responses:
+        '201': { $ref: '#/components/responses/StaffResponse' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /staff/{staff}:
+    patch:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/StaffId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffRequest' } } }
+      responses: { '200': { $ref: '#/components/responses/StaffResponse' }, '404': { $ref: '#/components/responses/NotFound' } }
+  /staff/{staff}/services/{service}:
+    put:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/StaffId' }, { name: service, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: Staff service assignment saved } }
+    delete:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/StaffId' }, { name: service, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: Staff service assignment deactivated } }
+  /staff/{staff}/working-hours:
+    get:
+      tags: [Scheduling]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/StaffId' }]
+      responses: { '200': { description: Working hours collection } }
+    post:
+      tags: [Scheduling]
+      security: [{ sanctum: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/TenantId' }
+        - { $ref: '#/components/parameters/StaffId' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/WorkingHourRequest' } } }
+      responses:
+        '201': { description: Working hours saved }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /staff/{staff}/working-hours/{workingHour}:
+    delete:
+      tags: [Scheduling]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/StaffId' }, { name: workingHour, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: Working hours deactivated } }
+  /days-off:
+    get:
+      tags: [Scheduling]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { description: Days off collection } }
+    post:
+      tags: [Scheduling]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/DayOffRequest' } } }
+      responses: { '201': { description: Day off created }, '422': { $ref: '#/components/responses/ValidationError' } }
+  /days-off/{dayOff}:
+    delete:
+      tags: [Scheduling]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { name: dayOff, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: Day off removed }, '404': { $ref: '#/components/responses/NotFound' } }
+  /tenant:
+    get:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { description: Tenant profile } }
+    patch:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TenantRequest' } } }
+      responses: { '200': { description: Tenant profile updated }, '422': { $ref: '#/components/responses/ValidationError' } }
+  /tenant/members:
+    get:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { description: Tenant members collection } }
+    post:
+      tags: [Business]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MemberRequest' } } }
+      responses: { '201': { description: Tenant member added }, '422': { $ref: '#/components/responses/ValidationError' } }
+  /appointments:
+    get:
+      tags: [Appointments]
+      security: [{ sanctum: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/TenantId' }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/AppointmentStatus' } }
+        - { name: staffId, in: query, schema: { type: integer } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { $ref: '#/components/parameters/PerPage' }
+      responses: { '200': { $ref: '#/components/responses/AppointmentCollection' } }
+    post:
+      tags: [Appointments]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AppointmentRequest' } } }
+      responses:
+        '201': { $ref: '#/components/responses/AppointmentResponse' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /appointments/{appointment}:
+    get:
+      tags: [Appointments]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/AppointmentId' }, { $ref: '#/components/parameters/TenantId' }]
+      responses:
+        '200': { $ref: '#/components/responses/AppointmentResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /appointments/{appointment}/confirm:
+    post:
+      tags: [Appointments]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/AppointmentId' }, { $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { $ref: '#/components/responses/AppointmentResponse' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /appointments/{appointment}/cancel:
+    post:
+      tags: [Appointments]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/AppointmentId' }, { $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { reason: { type: string, maxLength: 1000 } } } } }
+      responses: { '200': { $ref: '#/components/responses/AppointmentResponse' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /appointments/{appointment}/complete:
+    post:
+      tags: [Appointments]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/AppointmentId' }, { $ref: '#/components/parameters/TenantId' }]
+      responses: { '200': { $ref: '#/components/responses/AppointmentResponse' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /customers:
+    get:
+      tags: [Customers]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/PerPage' }]
+      responses: { '200': { $ref: '#/components/responses/CustomerCollection' } }
+    post:
+      tags: [Customers]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerRequest' } } }
+      responses: { '201': { $ref: '#/components/responses/CustomerResponse' }, '422': { $ref: '#/components/responses/ValidationError' } }
+  /customers/{customer}:
+    patch:
+      tags: [Customers]
+      security: [{ sanctum: [] }]
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { name: customer, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerRequest' } } }
+      responses: { '200': { $ref: '#/components/responses/CustomerResponse' }, '404': { $ref: '#/components/responses/NotFound' } }
+  /public/businesses/{slug}:
+    get:
+      tags: [Business]
+      summary: Get a public business profile
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses: { '200': { description: Business profile }, '404': { $ref: '#/components/responses/NotFound' } }
+  /public/businesses/{slug}/services:
+    get:
+      tags: [Business]
+      summary: Get active public services
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses: { '200': { $ref: '#/components/responses/ServiceCollection' } }
+  /public/businesses/{slug}/staff:
+    get:
+      tags: [Business]
+      summary: Get active public staff
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses: { '200': { $ref: '#/components/responses/StaffCollection' } }
+  /public/businesses/{slug}/availability:
+    get:
+      tags: [Scheduling]
+      summary: Get bookable slots
+      parameters:
+        - { $ref: '#/components/parameters/Slug' }
+        - { name: serviceId, in: query, required: true, schema: { type: integer } }
+        - { name: staffId, in: query, required: true, schema: { type: integer } }
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+      responses: { '200': { description: Available slots }, '422': { $ref: '#/components/responses/ValidationError' } }
+  /public/businesses/{slug}/appointments:
+    post:
+      tags: [Appointments]
+      summary: Create a guest booking
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AppointmentRequest' } } }
+      responses: { '201': { $ref: '#/components/responses/AppointmentResponse' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /public/appointments/{token}:
+    get:
+      tags: [Appointments]
+      summary: Retrieve an appointment using its opaque public token
+      parameters: [{ name: token, in: path, required: true, schema: { type: string, minLength: 32 } }]
+      responses: { '200': { $ref: '#/components/responses/AppointmentResponse' }, '404': { $ref: '#/components/responses/NotFound' } }
+components:
+  securitySchemes:
+    sanctum: { type: http, scheme: bearer, bearerFormat: Sanctum }
+  parameters:
+    TenantId: { name: X-Tenant-Id, in: header, required: false, schema: { type: integer } }
+    Slug: { name: slug, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9-]+$' } }
+    StaffId: { name: staff, in: path, required: true, schema: { type: integer } }
+    AppointmentId: { name: appointment, in: path, required: true, schema: { type: integer } }
+    PerPage: { name: perPage, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+  schemas:
+    RegisterRequest: { type: object, required: [name, email, password], properties: { name: { type: string }, email: { type: string, format: email }, password: { type: string, format: password }, businessName: { type: string } } }
+    LoginRequest: { type: object, required: [email, password], properties: { email: { type: string, format: email }, password: { type: string, format: password } } }
+    ServiceRequest: { type: object, required: [name, durationMinutes], properties: { name: { type: string }, description: { type: [string, 'null'] }, durationMinutes: { type: integer, minimum: 5, maximum: 1440 }, bufferMinutes: { type: integer, minimum: 0, maximum: 240 } } }
+    StaffRequest: { type: object, required: [displayName], properties: { displayName: { type: string }, description: { type: [string, 'null'] } } }
+    TenantRequest: { type: object, properties: { name: { type: string }, slug: { type: string }, timezone: { type: string }, email: { type: [string, 'null'], format: email }, phone: { type: [string, 'null'] }, bookingHorizonDays: { type: integer, minimum: 1, maximum: 365 } } }
+    MemberRequest: { type: object, required: [email, role], properties: { email: { type: string, format: email }, role: { type: string, enum: [owner, staff] } } }
+    DayOffRequest: { type: object, required: [localDate], properties: { localDate: { type: string, format: date }, staffId: { type: [integer, 'null'] }, reason: { type: [string, 'null'] } } }
+    WorkingHourRequest: { type: object, required: [weekday, startLocalTime, endLocalTime], properties: { weekday: { type: integer, minimum: 1, maximum: 7 }, startLocalTime: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }, endLocalTime: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' } } }
+    CustomerRequest: { type: object, required: [name], properties: { name: { type: string }, email: { type: [string, 'null'], format: email }, phone: { type: [string, 'null'] }, notes: { type: [string, 'null'] }, isActive: { type: boolean } } }
+    AppointmentRequest: { type: object, required: [serviceId, staffId, startAt, customer], properties: { serviceId: { type: integer }, staffId: { type: integer }, startAt: { type: string, format: date-time }, customer: { type: object, required: [name], properties: { name: { type: string }, email: { type: [string, 'null'], format: email }, phone: { type: [string, 'null'] } } }, notes: { type: [string, 'null'] } } }
+    AppointmentStatus: { type: string, enum: [pending, confirmed, cancelled, completed] }
+    Error: { type: object, properties: { error: { type: object, properties: { code: { type: string }, message: { type: string }, details: { type: object } } } } }
+  responses:
+    Unauthorized: { description: Authentication required, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    NotFound: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Conflict: { description: Booking or state conflict, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    ValidationError: { description: Validation failed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    ServiceResponse: { description: Service resource, content: { application/json: { schema: { type: object } } } }
+    ServiceCollection: { description: Service collection, content: { application/json: { schema: { type: object } } } }
+    StaffResponse: { description: Staff resource, content: { application/json: { schema: { type: object } } } }
+    StaffCollection: { description: Staff collection, content: { application/json: { schema: { type: object } } } }
+    AppointmentResponse: { description: Appointment resource, content: { application/json: { schema: { type: object } } } }
+    AppointmentCollection: { description: Paginated appointment collection, content: { application/json: { schema: { type: object } } } }
+    CustomerResponse: { description: Customer resource, content: { application/json: { schema: { type: object } } } }
+    CustomerCollection: { description: Paginated customer collection, content: { application/json: { schema: { type: object } } } }

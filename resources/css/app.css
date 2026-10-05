@@ -1,0 +1,595 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-ink: #171323;
+    --color-paper: #f8f7f4;
+    --color-brand: #7c3aed;
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    .public-booking-page {
+        overflow-x: clip;
+    }
+
+    .public-booking-page input,
+    .public-booking-page select,
+    .public-booking-page textarea {
+        max-width: 100%;
+    }
+
+    .public-booking-page select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%236b6478' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-position: right 1rem center;
+        background-repeat: no-repeat;
+        background-size: 1rem;
+        border-radius: 1rem;
+        border-width: 1px;
+        cursor: pointer;
+        min-height: 3.25rem;
+        padding-right: 3rem;
+        transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    }
+
+    .public-booking-page select:hover {
+        border-color: rgb(124 58 237 / 0.45);
+        background-color: #ffffff;
+    }
+
+    .public-booking-page select:focus {
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 4px rgb(124 58 237 / 0.13);
+        outline: none;
+    }
+
+    html.dark .public-booking-page select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23c4b5fd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    }
+
+    html.dark .public-booking-page select:hover {
+        border-color: rgb(167 139 250 / 0.65);
+        background-color: #2a2340;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .booking-select {
+        min-height: 3.25rem;
+        border: 1px solid rgb(23 19 35 / 0.1);
+        border-radius: 1rem;
+        background: #f8f7f4;
+        color: #171323;
+        padding: 0.75rem 1rem;
+        transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    }
+
+    .booking-select:hover {
+        border-color: rgb(124 58 237 / 0.45);
+        background: #ffffff;
+    }
+
+    .booking-select:focus-visible,
+    .booking-select[aria-expanded='true'] {
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 4px rgb(124 58 237 / 0.13);
+        outline: none;
+    }
+
+    .booking-options {
+        scrollbar-color: rgb(124 58 237 / 0.5) transparent;
+        scrollbar-width: thin;
+    }
+
+    .workspace-scroll {
+        scrollbar-color: rgb(124 58 237 / 0.42) transparent;
+        scrollbar-width: thin;
+        scrollbar-gutter: stable;
+    }
+
+    .workspace-scroll::-webkit-scrollbar {
+        width: 0.45rem;
+        height: 0.45rem;
+    }
+
+    .workspace-scroll::-webkit-scrollbar-track {
+        margin-block: 0.35rem;
+        border-radius: 9999px;
+        background: transparent;
+    }
+
+    .workspace-scroll::-webkit-scrollbar-thumb {
+        min-height: 2rem;
+        border: 2px solid transparent;
+        border-radius: 9999px;
+        background-clip: padding-box;
+        background-color: rgb(124 58 237 / 0.4);
+        transition: background-color 160ms ease;
+    }
+
+    .workspace-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgb(109 40 217 / 0.75);
+    }
+
+    html.dark .workspace-scroll {
+        scrollbar-color: rgb(167 139 250 / 0.55) transparent;
+    }
+
+    html.dark .workspace-scroll::-webkit-scrollbar-thumb {
+        background-color: rgb(167 139 250 / 0.48);
+    }
+
+    html.dark .workspace-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgb(196 181 253 / 0.8);
+    }
+
+    .booking-option {
+        display: block;
+        border-radius: 0.8rem;
+        color: #4b4558;
+        cursor: pointer;
+        margin-block: 0.125rem;
+        padding: 0.75rem 0.875rem;
+        transition: background-color 140ms ease, color 140ms ease;
+    }
+
+    .booking-option:hover,
+    .booking-option:focus-visible,
+    .booking-option.is-selected {
+        background: #ede9fe;
+        color: #5b21b6;
+        outline: none;
+    }
+
+    html.dark .booking-select {
+        border-color: rgb(255 255 255 / 0.1);
+        background: #211c31;
+        color: #f8f7ff;
+    }
+
+    html.dark .booking-select:hover {
+        border-color: rgb(167 139 250 / 0.65);
+        background: #2a2340;
+    }
+
+    html.dark .booking-option {
+        color: #d9d3e8;
+    }
+
+    html.dark .booking-option:hover,
+    html.dark .booking-option:focus-visible,
+    html.dark .booking-option.is-selected {
+        background: #302153;
+        color: #ddd6fe;
+    }
+
+    .public-booking-page .overflow-x-auto {
+        scrollbar-color: rgb(124 58 237 / 0.5) transparent;
+        scrollbar-width: thin;
+    }
+
+    .public-booking-page .overflow-x-auto::-webkit-scrollbar {
+        height: 0.45rem;
+    }
+
+    .public-booking-page .overflow-x-auto::-webkit-scrollbar-track {
+        border-radius: 9999px;
+        background: rgb(23 19 35 / 0.06);
+    }
+
+    .public-booking-page .overflow-x-auto::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: 9999px;
+        background-clip: padding-box;
+        background-color: rgb(124 58 237 / 0.55);
+    }
+
+    .public-booking-page .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+        background-color: rgb(109 40 217 / 0.8);
+    }
+
+    html.dark .public-booking-page .overflow-x-auto::-webkit-scrollbar-track {
+        background: rgb(255 255 255 / 0.08);
+    }
+
+    html.dark .public-booking-page .overflow-x-auto {
+        scrollbar-color: rgb(167 139 250 / 0.7) transparent;
+    }
+
+    .booking-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.625rem;
+        border: 1px solid rgb(225 29 72 / 0.18);
+        border-radius: 1rem;
+        background: rgb(255 241 242 / 0.9);
+        color: #9f1239;
+        padding: 0.75rem 0.875rem;
+        font-size: 0.8125rem;
+        line-height: 1.35rem;
+    }
+
+    .booking-alert svg {
+        flex: 0 0 auto;
+        margin-top: 0.125rem;
+    }
+
+    html.dark .booking-alert {
+        border-color: rgb(251 113 133 / 0.25);
+        background: rgb(127 29 29 / 0.2);
+        color: #fecdd3;
+    }
+
+    .public-booking-page p.text-rose-600 {
+        border: 1px solid rgb(225 29 72 / 0.18);
+        border-radius: 1rem;
+        background: rgb(255 241 242 / 0.9);
+        color: #9f1239;
+        padding: 0.7rem 0.875rem;
+        font-size: 0.8125rem;
+        line-height: 1.35rem;
+    }
+
+    html.dark .public-booking-page p.text-rose-600 {
+        border-color: rgb(251 113 133 / 0.25);
+        background: rgb(127 29 29 / 0.2);
+        color: #fecdd3;
+    }
+
+    @media (max-width: 640px) {
+        .public-booking-page h1 {
+            font-size: clamp(2.75rem, 14vw, 4rem);
+        }
+    }
+
+    ::selection {
+        background: #ddd6fe;
+        color: #2e1065;
+    }
+
+    :where(a, button, input, select, textarea):focus-visible {
+        outline: 3px solid #a78bfa;
+        outline-offset: 3px;
+    }
+
+    button:not(:disabled),
+    [role='button'] {
+        cursor: pointer;
+    }
+
+    .alertify-notifier.ajs-top.ajs-right {
+        right: 1.25rem;
+        top: 1.25rem;
+        width: min(25rem, calc(100vw - 2rem));
+    }
+
+    .alertify-notifier .ajs-message {
+        width: 100%;
+        margin-block: 0.65rem;
+        border: 1px solid rgb(23 19 35 / 0.08);
+        border-radius: 1rem;
+        background: rgb(255 255 255 / 0.96);
+        color: #292438;
+        padding: 1rem 1.1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.4;
+        text-align: left;
+        box-shadow: 0 18px 50px rgb(23 19 35 / 0.15);
+        backdrop-filter: blur(18px);
+    }
+
+    .alertify-notifier .ajs-message.ajs-success {
+        border-color: rgb(16 185 129 / 0.25);
+        color: #166534;
+    }
+
+    .alertify-notifier .ajs-message.ajs-error {
+        border-color: rgb(244 63 94 / 0.25);
+        color: #9f1239;
+    }
+
+    #alertify .ajs-dialog,
+    #alertify .ajs-header,
+    #alertify .ajs-footer {
+        background: #ffffff;
+        color: #171323;
+    }
+
+    #alertify .ajs-dialog {
+        overflow: hidden;
+        border: 1px solid rgb(23 19 35 / 0.1);
+        border-radius: 1.5rem;
+        box-shadow: 0 24px 70px rgb(23 19 35 / 0.2);
+    }
+
+    #alertify .ajs-header {
+        padding: 1.25rem 1.5rem;
+        font-weight: 700;
+    }
+
+    #alertify .ajs-content {
+        padding: 1.25rem 1.5rem;
+        line-height: 1.6;
+    }
+
+    #alertify .ajs-footer {
+        border-top: 1px solid rgb(23 19 35 / 0.08);
+        padding: 0.75rem 1rem;
+    }
+
+    #alertify .ajs-button {
+        border-radius: 0.75rem;
+        padding: 0.65rem 1rem;
+        font-weight: 600;
+    }
+
+    html.dark .alertify-notifier .ajs-message {
+        border-color: rgb(255 255 255 / 0.1);
+        background: rgb(33 28 49 / 0.96);
+        color: #f8f7ff;
+        box-shadow: 0 18px 50px rgb(0 0 0 / 0.38);
+    }
+
+    html.dark .alertify-notifier .ajs-message.ajs-success {
+        border-color: rgb(52 211 153 / 0.28);
+        color: #a7f3d0;
+    }
+
+    html.dark .alertify-notifier .ajs-message.ajs-error {
+        border-color: rgb(251 113 133 / 0.28);
+        color: #fecdd3;
+    }
+
+    html.dark #alertify .ajs-dialog,
+    html.dark #alertify .ajs-header,
+    html.dark #alertify .ajs-footer {
+        border-color: rgb(255 255 255 / 0.1);
+        background: #211c31;
+        color: #f8f7ff;
+    }
+
+    html.dark #alertify .ajs-footer {
+        border-top-color: rgb(255 255 255 / 0.1);
+    }
+
+    .appointly-swal-popup {
+        width: min(29rem, calc(100vw - 2rem));
+        border: 1px solid rgb(23 19 35 / 0.08);
+        border-radius: 1.75rem;
+        background: #ffffff;
+        padding: 2rem;
+        color: #171323;
+        box-shadow: 0 28px 90px rgb(23 19 35 / 0.2);
+    }
+
+    .appointly-swal-title {
+        margin-top: 0.5rem;
+        color: #171323;
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
+
+    .appointly-swal-message {
+        color: rgb(23 19 35 / 0.62);
+        font-size: 0.9rem;
+        line-height: 1.55;
+    }
+
+    .appointly-swal-actions {
+        gap: 0.65rem;
+        margin-top: 1.5rem;
+    }
+
+    .appointly-swal-confirm,
+    .appointly-swal-cancel {
+        min-height: 2.75rem;
+        cursor: pointer;
+        border: 0;
+        border-radius: 0.9rem;
+        padding: 0.7rem 1.1rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        transition: transform 150ms ease, background-color 150ms ease;
+    }
+
+    .appointly-swal-confirm:hover,
+    .appointly-swal-cancel:hover {
+        transform: translateY(-1px);
+    }
+
+    .appointly-swal-confirm {
+        background: #7c3aed;
+        color: #ffffff;
+    }
+
+    .appointly-swal-confirm:hover {
+        background: #6d28d9;
+    }
+
+    .appointly-swal-cancel {
+        background: #f3f1f7;
+        color: #4b4558;
+    }
+
+    .appointly-swal-input {
+        border: 1px solid rgb(23 19 35 / 0.14) !important;
+        border-radius: 0.9rem !important;
+        box-shadow: none !important;
+    }
+
+    html.dark .appointly-swal-popup {
+        border-color: rgb(255 255 255 / 0.1);
+        background: #211c31;
+        color: #f8f7ff;
+        box-shadow: 0 28px 90px rgb(0 0 0 / 0.45);
+    }
+
+    html.dark .appointly-swal-title {
+        color: #f8f7ff;
+    }
+
+    html.dark .appointly-swal-message {
+        color: rgb(248 247 255 / 0.65);
+    }
+
+    html.dark .appointly-swal-cancel {
+        background: #342e43;
+        color: #f8f7ff;
+    }
+
+    html.dark .appointly-swal-input {
+        border-color: rgb(255 255 255 / 0.14) !important;
+        background: #171323 !important;
+        color: #f8f7ff !important;
+    }
+
+    html:not(.dark) body {
+        color-scheme: light;
+    }
+
+    html.dark body {
+        background: #100d1b !important;
+        color: #f8f7ff !important;
+        color-scheme: dark;
+    }
+
+    .landing-page {
+        background: #fbfaf8;
+        color: #171323;
+    }
+
+    html:not(.dark) header[data-landing-nav] {
+        background: #ffffff !important;
+        border-color: rgb(23 19 35 / 0.1) !important;
+        color: #171323 !important;
+    }
+
+    html:not(.dark) header[data-landing-nav].is-scrolled {
+        box-shadow: 0 18px 40px rgb(23 19 35 / 0.08) !important;
+    }
+
+    html.dark header[data-landing-nav].is-scrolled {
+        box-shadow: 0 18px 40px rgb(0 0 0 / 0.28) !important;
+    }
+
+    html:not(.dark) .landing-page [class*="text-[#171323]"] {
+        color: #171323 !important;
+    }
+
+    html:not(.dark) .landing-page header,
+    html:not(.dark) .landing-page footer {
+        color: #171323;
+    }
+
+    .landing-page section,
+    .landing-page footer {
+        color-scheme: light;
+    }
+
+    html.dark .landing-page {
+        background: #100d1b;
+        color: #f8f7ff;
+        color-scheme: dark;
+    }
+
+    html.dark header[data-landing-nav],
+    html.dark .landing-page .bg-\[\#f8f7f4\] {
+        background-color: #100d1b !important;
+        border-color: rgb(255 255 255 / 0.1) !important;
+    }
+
+    html.dark .landing-page [class*="bg-white"],
+    html.dark .landing-page [class*="bg-slate-50"] {
+        background-color: #1b1728 !important;
+        color: #f8f7ff;
+    }
+
+    html.dark .landing-page [class*="text-\[\#171323\]"],
+    html.dark .landing-page [class*="text-slate-700"],
+    html.dark .landing-page [class*="text-slate-600"],
+    html.dark .landing-page [class*="text-slate-500"] {
+        color: #d9d3e8 !important;
+    }
+
+    html.dark .landing-page input,
+    html.dark .landing-page select,
+    html.dark .landing-page textarea {
+        background-color: #211c31 !important;
+        border-color: rgb(255 255 255 / 0.14) !important;
+        color: #f8f7ff !important;
+    }
+
+    html.dark .landing-page input::placeholder,
+    html.dark .landing-page textarea::placeholder {
+        color: #a9a0bd;
+    }
+
+    select option {
+        background: #ffffff;
+        color: #171323;
+    }
+
+    html.dark select option {
+        background: #211c31;
+        color: #f8f7ff;
+    }
+
+    html.dark .landing-page [class*="border-slate-100"],
+    html.dark .landing-page [class*="border-slate-200"] {
+        border-color: rgb(255 255 255 / 0.12) !important;
+    }
+
+    html.dark .landing-page [class*="f4f2f8"] {
+        background-color: #151120 !important;
+    }
+
+    html.dark .landing-page [class*="bg-violet-100"] {
+        background-color: #302153 !important;
+        color: #eee7ff !important;
+    }
+
+    html.dark .landing-page [class*="bg-amber-100"] {
+        background-color: #493518 !important;
+        color: #fff0c7 !important;
+    }
+
+    html.dark #main-content button[class~="bg-[#171323]"] {
+        border-color: transparent !important;
+        background-color: #c4b5fd !important;
+        color: #171323 !important;
+    }
+
+    html.dark #main-content button[class~="bg-[#171323]"]:hover:not(:disabled) {
+        background-color: #a78bfa !important;
+    }
+
+    html.dark #main-content [class~="dark:bg-white/6"] {
+        background-color: #211c31 !important;
+    }
+
+    html.dark #main-content [class~="dark:bg-white/8"] {
+        background-color: #29243a !important;
+    }
+
+    html.dark #main-content [class~="dark:bg-white/[0.025]"] {
+        background-color: #211c31 !important;
+    }
+
+    html.dark #main-content [class~="dark:border-white/10"] {
+        border-color: #494258 !important;
+    }
+}

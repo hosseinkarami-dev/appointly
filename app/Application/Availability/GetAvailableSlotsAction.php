@@ -18,6 +18,20 @@ class GetAvailableSlotsAction
     /** @return list<array{staffId: int, startAt: string, endAt: string}> */
     public function handle(Tenant $tenant, int $serviceId, int $staffId, string $date): array
     {
+        return $this->slots($tenant, $serviceId, $staffId, $date, false);
+    }
+
+    /** @return list<array{staffId: int, startAt: string, endAt: string, available: bool}> */
+    public function handleForBookingPage(Tenant $tenant, int $serviceId, int $staffId, string $date): array
+    {
+        return $this->slots($tenant, $serviceId, $staffId, $date, true);
+    }
+
+    /**
+     * @return list<array{staffId: int, startAt: string, endAt: string}|array{staffId: int, startAt: string, endAt: string, available: bool}>
+     */
+    private function slots(Tenant $tenant, int $serviceId, int $staffId, string $date, bool $includeUnavailable): array
+    {
         abort_unless($tenant->is_active, 404);
 
         $service = $tenant->services()->whereKey($serviceId)->where('is_active', true)->firstOrFail();
@@ -61,11 +75,19 @@ class GetAvailableSlotsAction
                 ($end->hour * 60) + $end->minute
             );
         })->all();
-        $slots = $this->availabilityCalculator->calculate(
+        $availableSlots = $this->availabilityCalculator->calculate(
             $workingIntervals,
             $occupiedIntervals,
             $service->duration_minutes + $service->buffer_minutes
         );
+        $slots = $includeUnavailable
+            ? $this->availabilityCalculator->calculate($workingIntervals, [], $service->duration_minutes + $service->buffer_minutes)
+            : $availableSlots;
+        $availableStarts = array_fill_keys(array_map(
+            fn (TimeInterval $slot): int => $slot->startMinute,
+            $availableSlots,
+        ), true);
+        $slotsForResponse = [];
 
         $availableSlots = [];
 
@@ -91,14 +113,20 @@ class GetAvailableSlotsAction
                 continue;
             }
 
-            $availableSlots[] = [
+            $slotData = [
                 'staffId' => $staff->id,
                 'startAt' => $start->utc()->toIso8601String(),
                 'endAt' => $start->addMinutes($service->duration_minutes)->utc()->toIso8601String(),
             ];
+
+            if ($includeUnavailable) {
+                $slotData['available'] = isset($availableStarts[$slot->startMinute]);
+            }
+
+            $slotsForResponse[] = $slotData;
         }
 
-        return $availableSlots;
+        return $slotsForResponse;
     }
 
     private function minutes(string $time): int

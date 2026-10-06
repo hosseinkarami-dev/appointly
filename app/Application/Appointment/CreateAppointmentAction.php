@@ -4,6 +4,7 @@ namespace App\Application\Appointment;
 
 use App\Domain\Appointment\Enums\AppointmentStatus;
 use App\Domain\Appointment\Exceptions\BookingUnavailable;
+use App\Domain\Appointment\Exceptions\PendingBookingExists;
 use App\Domain\Schedule\Services\AvailabilityCalculator;
 use App\Domain\Schedule\ValueObjects\TimeInterval;
 use App\Jobs\DeliverAppointmentWebhook;
@@ -115,6 +116,18 @@ class CreateAppointmentAction
             }
 
             $customer = $this->findOrCreateCustomer($tenant, $data['customer']);
+            $customer = Customer::query()->whereKey($customer->id)->lockForUpdate()->firstOrFail();
+
+            $hasPendingBooking = $tenant->appointments()
+                ->where('customer_id', $customer->id)
+                ->where('service_id', $service->id)
+                ->where('staff_profile_id', $staff->id)
+                ->where('status', AppointmentStatus::Pending)
+                ->exists();
+
+            if ($hasPendingBooking) {
+                throw new PendingBookingExists;
+            }
 
             $appointment = $tenant->appointments()->create([
                 'customer_id' => $customer->id,
@@ -129,6 +142,20 @@ class CreateAppointmentAction
                 'local_date' => $localDate,
                 'status' => AppointmentStatus::Pending,
                 'notes' => $data['notes'] ?? null,
+            ]);
+
+            $tenant->auditLogs()->create([
+                'actor_id' => null,
+                'action' => 'appointment.created',
+                'auditable_type' => Appointment::class,
+                'auditable_id' => $appointment->id,
+                'before' => [],
+                'after' => [
+                    'status' => AppointmentStatus::Pending->value,
+                    'startAt' => $appointment->start_at->toIso8601String(),
+                    'serviceName' => $appointment->service_name,
+                ],
+                'metadata' => ['source' => 'public_booking'],
             ]);
 
             DeliverAppointmentWebhook::dispatch($appointment, 'appointment.created')->afterCommit();

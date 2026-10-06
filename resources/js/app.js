@@ -6,23 +6,47 @@ import 'alertifyjs/build/css/themes/default.css';
 
 window.alertify = alertify;
 alertify.defaults.transition = 'slide';
-alertify.defaults.notifier.position = 'top-right';
+alertify.defaults.notifier.position = 'top-center';
 alertify.defaults.notifier.delay = 4.5;
 alertify.defaults.notifier.dismissOnClick = true;
 alertify.defaults.theme.ok = 'alertify-button alertify-button-ok';
 alertify.defaults.theme.cancel = 'alertify-button alertify-button-cancel';
 
-const replaceIcons = () => feather.replace({ 'stroke-width': 1.8 });
+const replaceIcons = () => {
+    document.querySelectorAll('i[data-feather]').forEach((iconElement) => {
+        const iconName = iconElement.getAttribute('data-feather');
+        const icon = feather.icons[iconName];
+        const parent = iconElement.parentNode;
 
-let iconRefreshQueued = false;
+        if (!icon || !parent || !iconElement.isConnected) return;
+
+        const attributes = [...iconElement.attributes].reduce((result, attribute) => {
+            if (attribute.name !== 'data-feather') {
+                result[attribute.name] = attribute.value;
+            }
+
+            return result;
+        }, { 'stroke-width': 1.8 });
+        const template = document.createElement('template');
+
+        template.innerHTML = icon.toSvg(attributes).trim();
+
+        const svgElement = template.content.firstElementChild;
+
+        if (svgElement?.namespaceURI !== 'http://www.w3.org/2000/svg' || iconElement.parentNode !== parent) return;
+
+        parent.replaceChild(svgElement, iconElement);
+    });
+};
+
+let iconRefreshFrame = null;
 let iconObserver = null;
 
 const queueIconRefresh = () => {
-    if (iconRefreshQueued) return;
+    if (iconRefreshFrame !== null) return;
 
-    iconRefreshQueued = true;
-    queueMicrotask(() => {
-        iconRefreshQueued = false;
+    iconRefreshFrame = requestAnimationFrame(() => {
+        iconRefreshFrame = null;
         replaceIcons();
         initializeAlerts();
     });
@@ -44,6 +68,45 @@ const observeFeatherIcons = () => {
     iconObserver.observe(document.documentElement, { childList: true, subtree: true });
 };
 
+const enhanceConfirmationElement = (element) => {
+    const confirmationAttribute = [...element.attributes].find(({ name }) => name.startsWith('wire:confirm'));
+    const message = (confirmationAttribute?.value || '').replaceAll('\\n', '\n') || 'Are you sure?';
+    const shouldPrompt = confirmationAttribute?.name === 'wire:confirm.prompt';
+    const [question, expected] = shouldPrompt ? message.split('|') : [message, null];
+
+    element.__livewire_confirm = async (action, instead) => {
+        const result = await Swal.fire({
+            title: shouldPrompt ? question : 'Confirm this action',
+            text: shouldPrompt ? `Type “${expected}” to continue.` : message,
+            icon: 'warning',
+            input: shouldPrompt ? 'text' : undefined,
+            inputPlaceholder: shouldPrompt ? expected : undefined,
+            inputValidator: shouldPrompt ? (value) => value === expected ? undefined : 'The confirmation text does not match.' : undefined,
+            showCancelButton: true,
+            confirmButtonText: shouldPrompt ? 'Yes, continue' : 'Yes, remove',
+            cancelButtonText: 'Keep it',
+            reverseButtons: true,
+            focusCancel: true,
+            buttonsStyling: false,
+            customClass: {
+                popup: 'appointly-swal-popup',
+                title: 'appointly-swal-title',
+                htmlContainer: 'appointly-swal-message',
+                input: 'appointly-swal-input',
+                actions: 'appointly-swal-actions',
+                confirmButton: 'appointly-swal-confirm',
+                cancelButton: 'appointly-swal-cancel',
+            },
+        });
+
+        result.isConfirmed ? action() : instead();
+    };
+};
+
+const enhanceExistingConfirmations = () => {
+    document.querySelectorAll('[wire\\:confirm], [wire\\:confirm\\.prompt]').forEach(enhanceConfirmationElement);
+};
+
 const registerLivewireHooks = () => {
     if (! window.Livewire || window.Livewire.appointlyIconsHooked) return;
 
@@ -51,37 +114,7 @@ const registerLivewireHooks = () => {
     window.Livewire.hook('directive.init', ({ el, directive }) => {
         if (directive.name !== 'confirm') return;
 
-        let message = (directive.expression || '').replaceAll('\\n', '\n') || 'Are you sure?';
-        const shouldPrompt = directive.modifiers.includes('prompt');
-        const [question, expected] = shouldPrompt ? message.split('|') : [message, null];
-
-        el.__livewire_confirm = async (action, instead) => {
-            const result = await Swal.fire({
-                title: shouldPrompt ? question : 'Are you sure?',
-                text: shouldPrompt ? `Type “${expected}” to continue.` : message,
-                icon: 'warning',
-                input: shouldPrompt ? 'text' : undefined,
-                inputPlaceholder: shouldPrompt ? expected : undefined,
-                inputValidator: shouldPrompt ? (value) => value === expected ? undefined : 'The confirmation text does not match.' : undefined,
-                showCancelButton: true,
-                confirmButtonText: 'Yes, continue',
-                cancelButtonText: 'Keep it',
-                reverseButtons: true,
-                focusCancel: true,
-                buttonsStyling: false,
-                customClass: {
-                    popup: 'appointly-swal-popup',
-                    title: 'appointly-swal-title',
-                    htmlContainer: 'appointly-swal-message',
-                    input: 'appointly-swal-input',
-                    actions: 'appointly-swal-actions',
-                    confirmButton: 'appointly-swal-confirm',
-                    cancelButton: 'appointly-swal-cancel',
-                },
-            });
-
-            result.isConfirmed ? action() : instead();
-        };
+        enhanceConfirmationElement(el);
     });
     window.Livewire.hook('morph.updated', queueIconRefresh);
     window.Livewire.hook('morph.added', queueIconRefresh);
@@ -103,7 +136,7 @@ const syncSidebarLinks = () => {
     const activeClasses = ['bg-violet-100', 'text-violet-900', 'dark:bg-violet-400/20', 'dark:text-violet-200'];
     const inactiveClasses = ['text-[#171323]/55', 'dark:text-white/55'];
 
-    document.querySelectorAll('aside a[href]:not([aria-label])').forEach((link) => {
+    document.querySelectorAll('aside a[href]:not([aria-label]), [data-workspace-nav] a[href]').forEach((link) => {
         const linkPath = new URL(link.href, window.location.origin).pathname.replace(/\/$/, '') || '/';
         const active = currentPath === linkPath || (linkPath !== '/workspace' && currentPath.startsWith(`${linkPath}/`));
 
@@ -159,7 +192,7 @@ const syncThemeControls = () => {
             icon.outerHTML = `<i data-theme-icon data-feather="${isDark ? 'sun' : 'moon'}" class="${icon.getAttribute('class') || ''}"></i>`;
         }
     });
-    replaceIcons();
+    queueIconRefresh();
 };
 
 const initializeThemeControls = () => {
@@ -180,9 +213,10 @@ document.addEventListener('click', (event) => {
 
 const bootApp = () => {
     observeFeatherIcons();
-    replaceIcons();
+    queueIconRefresh();
     initializeThemeControls();
     initializeAlerts();
+    enhanceExistingConfirmations();
     syncSidebarLinks();
     initializeLandingNavigation();
 };
@@ -196,9 +230,10 @@ if (document.readyState === 'loading') {
 document.addEventListener('livewire:navigated', () => {
     applySavedTheme();
     observeFeatherIcons();
-    replaceIcons();
+    queueIconRefresh();
     initializeThemeControls();
     initializeAlerts();
+    enhanceExistingConfirmations();
     syncSidebarLinks();
     initializeLandingNavigation();
 });
@@ -206,12 +241,14 @@ document.addEventListener('livewire:navigated', () => {
 document.addEventListener('livewire:navigating', applySavedTheme);
 
 document.addEventListener('livewire:updated', () => {
-    replaceIcons();
-    initializeAlerts();
+    queueIconRefresh();
 });
 
 document.addEventListener('livewire:init', registerLivewireHooks);
-document.addEventListener('livewire:initialized', registerLivewireHooks);
+document.addEventListener('livewire:initialized', () => {
+    registerLivewireHooks();
+    enhanceExistingConfirmations();
+});
 registerLivewireHooks();
 
 let deferredInstallPrompt = null;
@@ -253,3 +290,11 @@ const updateConnectionState = () => {
 window.addEventListener('online', updateConnectionState);
 window.addEventListener('offline', updateConnectionState);
 window.addEventListener('load', updateConnectionState);
+
+window.addEventListener('load', () => {
+    if (! ('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+        .then((registration) => registration.update())
+        .catch(() => {});
+});

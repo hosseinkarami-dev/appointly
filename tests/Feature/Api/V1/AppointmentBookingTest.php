@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WorkingHour;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class AppointmentBookingTest extends TestCase
@@ -44,6 +45,12 @@ class AppointmentBookingTest extends TestCase
             'staff_profile_id' => $staff->id,
             'local_date' => '2026-10-05',
         ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $tenant->id,
+            'action' => 'appointment.created',
+            'auditable_type' => Appointment::class,
+            'auditable_id' => Appointment::query()->value('id'),
+        ]);
     }
 
     public function test_booking_rejects_a_second_request_for_the_same_interval(): void
@@ -67,6 +74,31 @@ class AppointmentBookingTest extends TestCase
             ->assertJsonPath('error.code', 'appointment_conflict');
 
         self::assertSame(1, Appointment::query()->count());
+    }
+
+    public function test_booking_rejects_a_second_pending_request_for_the_same_email_service_and_staff(): void
+    {
+        [$tenant, $service, $staff] = $this->bookingSetup();
+        $this->travelTo('2026-10-04 12:00:00');
+        $payload = [
+            'serviceId' => $service->id,
+            'staffId' => $staff->id,
+            'startAt' => '2026-10-05T05:30:00+00:00',
+            'customer' => ['name' => 'Ada Lovelace', 'email' => 'ada@example.com'],
+        ];
+
+        $this->postJson('/api/v1/public/businesses/north-clinic/appointments', $payload)
+            ->assertCreated();
+
+        $this->postJson('/api/v1/public/businesses/north-clinic/appointments', [
+            ...$payload,
+            'startAt' => '2026-10-12T05:30:00+00:00',
+        ])
+            ->assertConflict()
+            ->assertJsonPath('error.message', 'You already have a booking request for this service with this team member. Wait for confirmation before requesting another.');
+
+        $this->assertDatabaseCount('appointments', 1);
+        $this->assertDatabaseCount('customers', 1);
     }
 
     public function test_booking_allows_an_adjacent_interval(): void
@@ -214,11 +246,14 @@ class AppointmentBookingTest extends TestCase
     /** @return array{0: Tenant, 1: Service, 2: StaffProfile, 3?: User, 4?: string} */
     private function bookingSetup(bool $withOwner = false, bool $withStaff = false): array
     {
+        $this->travelTo('2026-10-04 12:00:00');
+
         $tenant = Tenant::create([
             'name' => 'North Clinic',
             'slug' => 'north-clinic',
             'timezone' => 'Asia/Tehran',
         ]);
+        RateLimiter::clear(md5('public-booking'.$tenant->id.'|127.0.0.1'));
         $service = Service::create([
             'tenant_id' => $tenant->id,
             'name' => 'Consultation',

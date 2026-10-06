@@ -105,6 +105,7 @@ class Settings extends Component
         $this->authorizeOwner();
         $tenant = $this->tenant();
         $this->newApiToken = auth()->user()->createToken('tenant:'.$tenant->id.':'.now()->format('Y-m-d H:i:s'), ['tenant:'.$tenant->id])->plainTextToken;
+        session()->flash('token-created', 'API key created. Copy and store it now.');
     }
 
     public function revokeApiToken(int $tokenId): void

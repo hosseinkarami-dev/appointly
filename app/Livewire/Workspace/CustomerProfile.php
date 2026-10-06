@@ -4,6 +4,7 @@ namespace App\Livewire\Workspace;
 
 use App\Application\Customer\UpdateCustomerAction;
 use App\Livewire\Workspace\Concerns\InteractsWithWorkspace;
+use App\Models\Appointment;
 use App\Models\Customer;
 use Livewire\Component;
 
@@ -60,19 +61,28 @@ class CustomerProfile extends Component
 
     public function render(): mixed
     {
-        $customer = $this->tenant()->customers()
+        $tenant = $this->tenant();
+        $customer = $tenant->customers()
             ->with(['appointments' => fn ($query) => $query->with(['service', 'staff'])->orderByDesc('start_at')])
             ->findOrFail($this->customerId);
 
-        $auditLogs = $this->tenant()->auditLogs()
+        $appointmentIds = $customer->appointments->modelKeys();
+        $auditLogs = $tenant->auditLogs()
             ->with('actor')
-            ->where('auditable_type', Customer::class)
-            ->where('auditable_id', $customer->id)
+            ->where(function ($query) use ($appointmentIds, $customer): void {
+                $query->where(function ($customerQuery) use ($customer): void {
+                    $customerQuery->where('auditable_type', Customer::class)
+                        ->where('auditable_id', $customer->id);
+                })->orWhere(function ($appointmentQuery) use ($appointmentIds): void {
+                    $appointmentQuery->where('auditable_type', Appointment::class)
+                        ->whereIn('auditable_id', $appointmentIds);
+                });
+            })
             ->latest()
             ->limit(20)
             ->get();
 
-        return view('livewire.workspace.customer-profile', compact('customer', 'auditLogs'));
+        return view('livewire.workspace.customer-profile', compact('tenant', 'customer', 'auditLogs'));
     }
 
     private function customer(): Customer

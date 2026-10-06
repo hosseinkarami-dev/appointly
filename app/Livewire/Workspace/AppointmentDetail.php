@@ -66,8 +66,11 @@ class AppointmentDetail extends Component
 
     public function render(): mixed
     {
-        $appointment = $this->appointment();
-        $auditLogs = $this->tenant()->auditLogs()
+        $tenant = $this->tenant();
+        $appointment = $tenant->appointments()
+            ->with(['service', 'staff', 'customer'])
+            ->findOrFail($this->appointmentId);
+        $auditLogs = $tenant->auditLogs()
             ->with('actor')
             ->where('auditable_type', Appointment::class)
             ->where('auditable_id', $appointment->id)
@@ -75,7 +78,7 @@ class AppointmentDetail extends Component
             ->limit(20)
             ->get();
 
-        return view('livewire.workspace.appointment-detail', compact('appointment', 'auditLogs'));
+        return view('livewire.workspace.appointment-detail', compact('tenant', 'appointment', 'auditLogs'));
     }
 
     private function appointment(): Appointment

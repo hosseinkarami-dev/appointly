@@ -175,39 +175,6 @@
         color: #ddd6fe;
     }
 
-    .public-booking-page .overflow-x-auto {
-        scrollbar-color: rgb(124 58 237 / 0.5) transparent;
-        scrollbar-width: thin;
-    }
-
-    .public-booking-page .overflow-x-auto::-webkit-scrollbar {
-        height: 0.45rem;
-    }
-
-    .public-booking-page .overflow-x-auto::-webkit-scrollbar-track {
-        border-radius: 9999px;
-        background: rgb(23 19 35 / 0.06);
-    }
-
-    .public-booking-page .overflow-x-auto::-webkit-scrollbar-thumb {
-        border: 2px solid transparent;
-        border-radius: 9999px;
-        background-clip: padding-box;
-        background-color: rgb(124 58 237 / 0.55);
-    }
-
-    .public-booking-page .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-        background-color: rgb(109 40 217 / 0.8);
-    }
-
-    html.dark .public-booking-page .overflow-x-auto::-webkit-scrollbar-track {
-        background: rgb(255 255 255 / 0.08);
-    }
-
-    html.dark .public-booking-page .overflow-x-auto {
-        scrollbar-color: rgb(167 139 250 / 0.7) transparent;
-    }
-
     .booking-alert {
         display: flex;
         align-items: flex-start;
@@ -269,36 +236,74 @@
         cursor: pointer;
     }
 
-    .alertify-notifier.ajs-top.ajs-right {
-        right: 1.25rem;
-        top: 1.25rem;
-        width: min(25rem, calc(100vw - 2rem));
+    .alertify-notifier.ajs-top.ajs-center {
+        top: 5rem !important;
+        left: 50% !important;
+        z-index: 10000;
     }
 
     .alertify-notifier .ajs-message {
-        width: 100%;
-        margin-block: 0.65rem;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        width: min(28rem, calc(100vw - 2rem)) !important;
+        margin-block: 0.5rem;
         border: 1px solid rgb(23 19 35 / 0.08);
-        border-radius: 1rem;
-        background: rgb(255 255 255 / 0.96);
+        border-radius: 1.1rem;
+        background: rgb(255 255 255 / 0.98);
         color: #292438;
-        padding: 1rem 1.1rem;
+        padding: 0.9rem 1.1rem !important;
         font-size: 0.875rem;
         font-weight: 600;
         line-height: 1.4;
         text-align: left;
-        box-shadow: 0 18px 50px rgb(23 19 35 / 0.15);
+        box-shadow: 0 18px 50px rgb(23 19 35 / 0.18);
         backdrop-filter: blur(18px);
     }
 
+    .alertify-notifier.ajs-center .ajs-message,
+    .alertify-notifier.ajs-center .ajs-message.ajs-visible {
+        left: 50% !important;
+        transform: translateX(-50%);
+    }
+
+    .alertify-notifier .ajs-message::before {
+        display: inline-grid;
+        width: 1.5rem;
+        height: 1.5rem;
+        flex: 0 0 1.5rem;
+        place-items: center;
+        margin-right: 0.75rem;
+        border-radius: 9999px;
+        background: #ede9fe;
+        color: #6d28d9;
+        content: 'i';
+        font-size: 0.8rem;
+        font-weight: 800;
+    }
+
     .alertify-notifier .ajs-message.ajs-success {
-        border-color: rgb(16 185 129 / 0.25);
+        border-color: rgb(16 185 129 / 0.22);
+        background: #f0fdf8;
         color: #166534;
     }
 
+    .alertify-notifier .ajs-message.ajs-success::before {
+        background: #d1fae5;
+        color: #047857;
+        content: '✓';
+    }
+
     .alertify-notifier .ajs-message.ajs-error {
-        border-color: rgb(244 63 94 / 0.25);
+        border-color: rgb(244 63 94 / 0.22);
+        background: #fff1f2;
         color: #9f1239;
+    }
+
+    .alertify-notifier .ajs-message.ajs-error::before {
+        background: #ffe4e6;
+        color: #be123c;
+        content: '!';
     }
 
     #alertify .ajs-dialog,
@@ -337,20 +342,32 @@
     }
 
     html.dark .alertify-notifier .ajs-message {
-        border-color: rgb(255 255 255 / 0.1);
-        background: rgb(33 28 49 / 0.96);
+        border-color: rgb(167 139 250 / 0.18);
+        background: rgb(33 28 49 / 0.98);
         color: #f8f7ff;
-        box-shadow: 0 18px 50px rgb(0 0 0 / 0.38);
+        box-shadow: 0 20px 55px rgb(0 0 0 / 0.48);
     }
 
     html.dark .alertify-notifier .ajs-message.ajs-success {
-        border-color: rgb(52 211 153 / 0.28);
+        border-color: rgb(52 211 153 / 0.24);
+        background: #172d2a;
         color: #a7f3d0;
     }
 
+    html.dark .alertify-notifier .ajs-message.ajs-success::before {
+        background: rgb(52 211 153 / 0.16);
+        color: #6ee7b7;
+    }
+
     html.dark .alertify-notifier .ajs-message.ajs-error {
-        border-color: rgb(251 113 133 / 0.28);
+        border-color: rgb(251 113 133 / 0.24);
+        background: #321f2a;
         color: #fecdd3;
+    }
+
+    html.dark .alertify-notifier .ajs-message.ajs-error::before {
+        background: rgb(251 113 133 / 0.16);
+        color: #fda4af;
     }
 
     html.dark #alertify .ajs-dialog,
@@ -432,10 +449,12 @@
     }
 
     html.dark .appointly-swal-popup {
-        border-color: rgb(255 255 255 / 0.1);
-        background: #211c31;
+        border-color: rgb(167 139 250 / 0.2);
+        background: #1b1728;
         color: #f8f7ff;
         box-shadow: 0 28px 90px rgb(0 0 0 / 0.45);
+        --swal2-background: #1b1728;
+        --swal2-color: #f8f7ff;
     }
 
     html.dark .appointly-swal-title {
@@ -446,8 +465,17 @@
         color: rgb(248 247 255 / 0.65);
     }
 
+    html.dark .appointly-swal-confirm {
+        background: #a78bfa;
+        color: #171323;
+    }
+
+    html.dark .appointly-swal-confirm:hover {
+        background: #c4b5fd;
+    }
+
     html.dark .appointly-swal-cancel {
-        background: #342e43;
+        background: #30283f;
         color: #f8f7ff;
     }
 
@@ -592,4 +620,111 @@
     html.dark #main-content [class~="dark:border-white/10"] {
         border-color: #494258 !important;
     }
+}
+
+html.dark button[class~="bg-[#171323]"],
+html.dark a[class~="bg-[#171323]"] {
+    background-color: #7c3aed;
+    color: #ffffff;
+}
+
+html.dark button[class~="bg-[#171323]"]:hover,
+html.dark a[class~="bg-[#171323]"]:hover {
+    background-color: #6d28d9;
+}
+
+.alertify-notifier.ajs-top.ajs-center {
+    top: 5rem !important;
+    left: 50% !important;
+    z-index: 10000 !important;
+}
+
+.alertify-notifier.ajs-center .ajs-message,
+.alertify-notifier.ajs-center .ajs-message.ajs-visible {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    width: min(28rem, calc(100vw - 2rem)) !important;
+    left: 50% !important;
+    margin: 0.5rem 0 !important;
+    padding: 0.9rem 1.1rem !important;
+    transform: translateX(-50%) !important;
+    border: 1px solid rgb(23 19 35 / 0.08) !important;
+    border-radius: 1.1rem !important;
+    background: rgb(255 255 255 / 0.98) !important;
+    color: #292438 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    text-align: left !important;
+    box-shadow: 0 18px 50px rgb(23 19 35 / 0.18) !important;
+    backdrop-filter: blur(18px) !important;
+}
+
+.alertify-notifier .ajs-message::before {
+    display: inline-grid !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    flex: 0 0 1.5rem !important;
+    place-items: center !important;
+    margin-right: 0.75rem !important;
+    border-radius: 9999px !important;
+    background: #ede9fe !important;
+    color: #6d28d9 !important;
+    content: 'i' !important;
+    font-size: 0.8rem !important;
+    font-weight: 800 !important;
+}
+
+.alertify-notifier .ajs-message.ajs-success {
+    border-color: rgb(16 185 129 / 0.22) !important;
+    background: #f0fdf8 !important;
+    color: #166534 !important;
+}
+
+.alertify-notifier .ajs-message.ajs-success::before {
+    background: #d1fae5 !important;
+    color: #047857 !important;
+    content: '✓' !important;
+}
+
+.alertify-notifier .ajs-message.ajs-error {
+    border-color: rgb(244 63 94 / 0.22) !important;
+    background: #fff1f2 !important;
+    color: #9f1239 !important;
+}
+
+.alertify-notifier .ajs-message.ajs-error::before {
+    background: #ffe4e6 !important;
+    color: #be123c !important;
+    content: '!' !important;
+}
+
+html.dark .alertify-notifier .ajs-message {
+    border-color: rgb(167 139 250 / 0.18) !important;
+    background: rgb(33 28 49 / 0.98) !important;
+    color: #f8f7ff !important;
+    box-shadow: 0 20px 55px rgb(0 0 0 / 0.48) !important;
+}
+
+html.dark .alertify-notifier .ajs-message.ajs-success {
+    border-color: rgb(52 211 153 / 0.24) !important;
+    background: #172d2a !important;
+    color: #a7f3d0 !important;
+}
+
+html.dark .alertify-notifier .ajs-message.ajs-success::before {
+    background: rgb(52 211 153 / 0.16) !important;
+    color: #6ee7b7 !important;
+}
+
+html.dark .alertify-notifier .ajs-message.ajs-error {
+    border-color: rgb(251 113 133 / 0.24) !important;
+    background: #321f2a !important;
+    color: #fecdd3 !important;
+}
+
+html.dark .alertify-notifier .ajs-message.ajs-error::before {
+    background: rgb(251 113 133 / 0.16) !important;
+    color: #fda4af !important;
 }

@@ -35,11 +35,6 @@ class Calendar extends Component
             ->toDateString();
     }
 
-    public function showToday(): void
-    {
-        $this->date = CarbonImmutable::now($this->tenant()->timezone)->toDateString();
-    }
-
     public function setViewMode(string $viewMode): void
     {
         abort_unless(in_array($viewMode, ['day', 'week'], true), 422);

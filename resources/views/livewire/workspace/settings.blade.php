@@ -2,6 +2,8 @@
     <x-workspace.page-header eyebrow="Workspace" title="Settings" description="Keep your profile, booking rules, and availability in one calm place." />
 
     @if (session('profile-saved'))<span class="hidden" data-alertify-success="{{ session('profile-saved') }}"></span>@endif
+    @if (session('token-created'))<span class="hidden" data-alertify-success="{{ session('token-created') }}"></span>@endif
+    @if (session('token-revoked'))<span class="hidden" data-alertify-success="{{ session('token-revoked') }}"></span>@endif
 
     <div class="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <section class="rounded-[1.75rem] border border-[#171323]/8 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/6 sm:p-8">
@@ -49,7 +51,7 @@
         <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[0.22em] text-violet-600">Developer access</p><h2 class="mt-2 text-xl font-semibold">API keys</h2><p class="mt-1 text-sm text-[#171323]/50 dark:text-white/50">Create a tenant-scoped key for REST API clients.</p></div><i data-feather="key-round" class="size-6 text-violet-600"></i></div>
         @if ($newApiToken)<div class="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p class="font-semibold">Copy this key now</p><p class="mt-2 break-all font-mono text-xs">{{ $newApiToken }}</p></div>@endif
         <button wire:click="createApiToken" type="button" class="mt-5 rounded-xl bg-[#171323] px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700">Create API key</button>
-        <div class="mt-6 space-y-2">@forelse ($apiTokens as $token)<div class="flex items-center justify-between gap-3 rounded-xl bg-[#f6f5f2] px-3 py-3 dark:bg-white/6"><div><p class="text-xs font-semibold">{{ $token->name }}</p><p class="mt-1 text-[11px] text-[#171323]/45 dark:text-white/45">Created {{ $token->created_at?->diffForHumans() }}</p></div><button wire:click="revokeApiToken({{ $token->id }})" type="button" class="text-xs font-semibold text-rose-600">Revoke</button></div>@empty<p class="mt-4 text-xs text-[#171323]/45 dark:text-white/45">No API keys have been created.</p>@endforelse</div>
+        <div class="mt-6 space-y-2">@forelse ($apiTokens as $token)<div wire:key="api-token-{{ $token->id }}" class="flex items-center justify-between gap-3 rounded-xl border border-[#171323]/5 bg-[#f6f5f2] px-3 py-3 dark:border-white/8 dark:bg-[#29243a]"><div class="min-w-0"><p class="truncate text-xs font-semibold">{{ $token->name }}</p><p class="mt-1 text-[11px] text-[#171323]/45 dark:text-white/55">Created {{ $token->created_at?->diffForHumans() }}</p></div><button wire:click="revokeApiToken({{ $token->id }})" type="button" class="shrink-0 rounded-lg px-2.5 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10">Revoke</button></div>@empty<p class="mt-4 text-xs text-[#171323]/45 dark:text-white/45">No API keys have been created.</p>@endforelse</div>
     </div>
 </section>
 </div>

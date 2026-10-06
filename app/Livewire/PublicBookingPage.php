@@ -5,8 +5,11 @@ namespace App\Livewire;
 use App\Application\Appointment\CreateAppointmentAction;
 use App\Application\Availability\GetAvailableSlotsAction;
 use App\Domain\Appointment\Exceptions\BookingUnavailable;
+use App\Domain\Appointment\Exceptions\PendingBookingExists;
 use App\Models\Tenant;
 use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -27,6 +30,8 @@ class PublicBookingPage extends Component
     public string $customerEmail = '';
 
     public string $customerPhone = '';
+
+    public string $website = '';
 
     public array $availableSlots = [];
 
@@ -66,6 +71,27 @@ class PublicBookingPage extends Component
     public function updatedDate(mixed $value = null): void
     {
         $this->selectedStartAt = '';
+        $this->resetErrorBag('date');
+
+        $selectedDate = $this->selectedCalendarDate();
+
+        if ($selectedDate === null) {
+            $this->addError('date', 'Choose a valid date within this booking window.');
+            $this->availableSlots = [];
+
+            return;
+        }
+
+        $today = CarbonImmutable::now($this->tenant->timezone)->startOfDay();
+        $lastBookableDate = $today->addDays($this->tenant->booking_horizon_days);
+
+        if ($selectedDate->lt($today) || $selectedDate->gt($lastBookableDate)) {
+            $this->addError('date', 'Choose a date within this booking window.');
+            $this->availableSlots = [];
+
+            return;
+        }
+
         $this->loadSlots(app(GetAvailableSlotsAction::class));
     }
 
@@ -78,7 +104,7 @@ class PublicBookingPage extends Component
         }
 
         try {
-            $this->availableSlots = $getAvailableSlots->handle(
+            $this->availableSlots = $getAvailableSlots->handleForBookingPage(
                 $this->tenant,
                 (int) $this->serviceId,
                 (int) $this->staffId,
@@ -91,6 +117,20 @@ class PublicBookingPage extends Component
 
     public function book(CreateAppointmentAction $createAppointment): void
     {
+        if (filled($this->website)) {
+            return;
+        }
+
+        $ipRateLimitKey = 'public-booking:'.$this->tenant->id.':'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($ipRateLimitKey, 5)) {
+            throw ValidationException::withMessages([
+                'bookingRateLimit' => 'Too many booking attempts. Please wait a minute and try again.',
+            ]);
+        }
+
+        RateLimiter::hit($ipRateLimitKey, 60);
+
         $this->validate([
             'serviceId' => ['required', 'integer'],
             'staffId' => ['required', 'integer'],
@@ -99,7 +139,18 @@ class PublicBookingPage extends Component
             'customerName' => ['required', 'string', 'max:255'],
             'customerEmail' => ['required', 'email', 'max:255'],
             'customerPhone' => ['nullable', 'string', 'max:50'],
+            'website' => ['prohibited'],
         ]);
+
+        $emailRateLimitKey = 'public-booking-email:'.$this->tenant->id.':'.hash('sha256', mb_strtolower(trim($this->customerEmail)).'|'.$this->serviceId.'|'.$this->staffId);
+
+        if (RateLimiter::tooManyAttempts($emailRateLimitKey, 5)) {
+            throw ValidationException::withMessages([
+                'bookingRateLimit' => 'Too many booking attempts for these details. Please try again later.',
+            ]);
+        }
+
+        RateLimiter::hit($emailRateLimitKey, 3600);
 
         try {
             $appointment = $createAppointment->handle($this->tenant, [
@@ -112,6 +163,8 @@ class PublicBookingPage extends Component
                     'phone' => $this->customerPhone ?: null,
                 ],
             ]);
+        } catch (PendingBookingExists $exception) {
+            throw ValidationException::withMessages(['customerEmail' => $exception->getMessage()]);
         } catch (BookingUnavailable $exception) {
             throw ValidationException::withMessages(['selectedStartAt' => $exception->getMessage()]);
         }
@@ -135,16 +188,28 @@ class PublicBookingPage extends Component
             'services' => $this->tenant->services()->where('is_active', true)->orderBy('name')->get(),
             'staff' => $staffQuery->orderBy('display_name')->get(),
             'calendarDays' => $this->calendarDays(),
+            'availableSlotCount' => collect($this->availableSlots)->where('available', true)->count(),
         ]);
     }
 
     /** @return list<array{date: string, day: string, month: string, number: string, available: int, selected: bool}> */
     private function calendarDays(): array
     {
-        $start = CarbonImmutable::now($this->tenant->timezone)->startOfDay();
+        $today = CarbonImmutable::now($this->tenant->timezone)->startOfDay();
+        $dayCount = min(21, $this->tenant->booking_horizon_days + 1);
+        $lastBookableDate = $today->addDays($this->tenant->booking_horizon_days);
+        $latestStartDate = $lastBookableDate->subDays($dayCount - 1);
+        $start = $today;
+
+        $selectedDate = $this->selectedCalendarDate();
+
+        if ($selectedDate?->betweenIncluded($today, $lastBookableDate)) {
+            $start = $selectedDate->subDays(3)->max($today)->min($latestStartDate);
+        }
+
         $days = [];
 
-        for ($offset = 0; $offset < min(21, $this->tenant->booking_horizon_days + 1); $offset++) {
+        for ($offset = 0; $offset < $dayCount; $offset++) {
             $day = $start->addDays($offset);
             $available = 0;
 
@@ -174,9 +239,18 @@ class PublicBookingPage extends Component
         return $days;
     }
 
-    /** @return list<array{staffId: int, startAt: string, endAt: string}> */
-    public function getSlotsProperty(): array
+    private function selectedCalendarDate(): ?CarbonImmutable
     {
-        return $this->availableSlots;
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/D', $this->date)) {
+            return null;
+        }
+
+        try {
+            $selectedDate = CarbonImmutable::parse($this->date, $this->tenant->timezone)->startOfDay();
+        } catch (InvalidFormatException) {
+            return null;
+        }
+
+        return $selectedDate->toDateString() === $this->date ? $selectedDate : null;
     }
 }

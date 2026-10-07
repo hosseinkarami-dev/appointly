@@ -64,6 +64,15 @@ class WebAuthControllerTest extends TestCase
     public function test_google_callback_links_an_existing_account_by_email(): void
     {
         $user = User::factory()->create(['email' => 'ada@example.com']);
+        $tenant = Tenant::create([
+            'name' => 'Ada workspace',
+            'slug' => 'ada-workspace',
+            'timezone' => 'UTC',
+        ]);
+        $tenant->users()->attach($user, [
+            'role' => MembershipRole::Owner->value,
+            'is_active' => true,
+        ]);
         $googleUser = GoogleUser::fake([
             'id' => 'google-456',
             'email' => 'ada@example.com',
@@ -80,7 +89,7 @@ class WebAuthControllerTest extends TestCase
             'id' => $user->id,
             'google_id' => 'google-456',
         ]);
-        $this->assertDatabaseCount('tenants', 0);
+        $this->assertSame(1, $user->tenants()->count());
     }
 
     public function test_authenticated_workspace_uses_dashboard_route(): void

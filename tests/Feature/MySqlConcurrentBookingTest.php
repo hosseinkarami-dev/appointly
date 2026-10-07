@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Customer;
 use App\Models\Service;
 use App\Models\StaffProfile;
 use App\Models\Tenant;
@@ -24,45 +25,48 @@ class MySqlConcurrentBookingTest extends TestCase
             $this->markTestSkipped('The booking race test requires MySQL.');
         }
 
-        $tenant = Tenant::create([
-            'name' => 'Concurrent booking test',
-            'slug' => 'concurrent-'.Str::uuid(),
-            'timezone' => 'UTC',
-        ]);
-        $service = Service::create([
-            'tenant_id' => $tenant->id,
-            'name' => 'Consultation',
-            'duration_minutes' => 30,
-        ]);
-        $staff = StaffProfile::create([
-            'tenant_id' => $tenant->id,
-            'display_name' => 'Concurrent staff',
-        ]);
-        $staff->services()->attach($service, [
-            'tenant_id' => $tenant->id,
-            'is_active' => true,
-        ]);
-
-        $bookingDate = CarbonImmutable::now('UTC')->addWeek()->startOfWeek()->addDays(4);
-        WorkingHour::create([
-            'tenant_id' => $tenant->id,
-            'staff_profile_id' => $staff->id,
-            'weekday' => $bookingDate->isoWeekday(),
-            'start_local_time' => '09:00',
-            'end_local_time' => '11:00',
-        ]);
-
         $barrierPath = tempnam(sys_get_temp_dir(), 'appointly-booking-race-');
 
         if ($barrierPath === false) {
             throw new RuntimeException('Unable to create the booking race barrier.');
         }
 
-        file_put_contents($barrierPath, 'wait');
-        $workerCode = $this->workerCode($tenant->id, $service->id, $staff->id, $bookingDate->setTime(9, 0)->toIso8601String(), $barrierPath);
         $workers = [];
+        $tenantId = null;
 
         try {
+            $tenant = Tenant::create([
+                'name' => 'Concurrent booking test',
+                'slug' => 'concurrent-'.Str::uuid(),
+                'timezone' => 'UTC',
+            ]);
+            $tenantId = $tenant->id;
+            $service = Service::create([
+                'tenant_id' => $tenant->id,
+                'name' => 'Consultation',
+                'duration_minutes' => 30,
+            ]);
+            $staff = StaffProfile::create([
+                'tenant_id' => $tenant->id,
+                'display_name' => 'Concurrent staff',
+            ]);
+            $staff->services()->attach($service, [
+                'tenant_id' => $tenant->id,
+                'is_active' => true,
+            ]);
+
+            $bookingDate = CarbonImmutable::now('UTC')->addWeek()->startOfWeek()->addDays(4);
+            WorkingHour::create([
+                'tenant_id' => $tenant->id,
+                'staff_profile_id' => $staff->id,
+                'weekday' => $bookingDate->isoWeekday(),
+                'start_local_time' => '09:00',
+                'end_local_time' => '11:00',
+            ]);
+
+            file_put_contents($barrierPath, 'wait');
+            $workerCode = $this->workerCode($tenant->id, $service->id, $staff->id, $bookingDate->setTime(9, 0)->toIso8601String(), $barrierPath);
+
             for ($workerId = 1; $workerId <= 2; $workerId++) {
                 $pipes = [];
                 $process = proc_open(
@@ -95,18 +99,51 @@ class MySqlConcurrentBookingTest extends TestCase
             }
 
             $this->assertEqualsCanonicalizing(['created', 'unavailable'], $results);
-            $this->assertDatabaseCount('appointments', 1);
+            $this->assertSame(1, DB::table('appointments')->where('tenant_id', $tenantId)->count());
         } finally {
             foreach ($workers as $worker) {
                 if (is_resource($worker['process'])) {
                     proc_terminate($worker['process']);
+
+                    foreach ($worker['pipes'] as $pipe) {
+                        if (is_resource($pipe)) {
+                            fclose($pipe);
+                        }
+                    }
+
+                    proc_close($worker['process']);
                 }
+            }
+
+            if ($tenantId !== null) {
+                $this->deleteTenantFixtures($tenantId);
             }
 
             if (file_exists($barrierPath)) {
                 unlink($barrierPath);
             }
         }
+    }
+
+    private function deleteTenantFixtures(int $tenantId): void
+    {
+        $customerIds = DB::table('customers')->where('tenant_id', $tenantId)->select('id');
+
+        DB::table('notifications')
+            ->where('notifiable_type', Customer::class)
+            ->whereIn('notifiable_id', $customerIds)
+            ->delete();
+        DB::table('appointments')->where('tenant_id', $tenantId)->delete();
+        DB::table('audit_logs')->where('tenant_id', $tenantId)->delete();
+        DB::table('staff_day_locks')->where('tenant_id', $tenantId)->delete();
+        DB::table('working_hours')->where('tenant_id', $tenantId)->delete();
+        DB::table('days_off')->where('tenant_id', $tenantId)->delete();
+        DB::table('staff_services')->where('tenant_id', $tenantId)->delete();
+        DB::table('tenant_memberships')->where('tenant_id', $tenantId)->delete();
+        DB::table('customers')->where('tenant_id', $tenantId)->delete();
+        DB::table('staff_profiles')->where('tenant_id', $tenantId)->delete();
+        DB::table('services')->where('tenant_id', $tenantId)->delete();
+        DB::table('tenants')->where('id', $tenantId)->delete();
     }
 
     private function workerCode(int $tenantId, int $serviceId, int $staffId, string $startAt, string $barrierPath): string

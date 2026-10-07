@@ -633,6 +633,59 @@ html.dark a[class~="bg-[#171323]"]:hover {
     background-color: #6d28d9;
 }
 
+.auth-input {
+    width: 100%;
+    min-height: 3.25rem;
+    border: 1px solid rgb(23 19 35 / 0.15);
+    border-radius: 0.75rem;
+    background-color: #fbfaf9;
+    padding: 0.75rem 1rem;
+    color: #171323;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.auth-input::placeholder {
+    color: rgb(23 19 35 / 0.48);
+}
+
+.auth-input:focus-visible {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 4px rgb(124 58 237 / 0.13);
+}
+
+html.dark .auth-input {
+    border-color: rgb(255 255 255 / 0.16);
+    background-color: #100d1b;
+    color: #f8f7ff;
+    color-scheme: dark;
+}
+
+html.dark .auth-input::placeholder {
+    color: rgb(248 247 255 / 0.48);
+}
+
+html.dark .auth-input:focus-visible {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 4px rgb(167 139 250 / 0.18);
+}
+
+html.dark .landing-page [data-landing-highlight] {
+    background-color: #fbbf24 !important;
+    color: #211806 !important;
+    color-scheme: light;
+}
+
+html.dark .landing-page [data-landing-highlight] .landing-highlight-label {
+    color: #62480d !important;
+}
+
+html.dark .landing-page [data-landing-highlight] .landing-highlight-title,
+html.dark .landing-page [data-landing-highlight] .landing-highlight-icon {
+    color: #211806 !important;
+}
+
 .alertify-notifier.ajs-top.ajs-center {
     top: 5rem !important;
     left: 50% !important;

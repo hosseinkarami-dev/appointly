@@ -1,4 +1,4 @@
-@props(['wireModel', 'value', 'today'])
+@props(['wireModel', 'value', 'today', 'minDate' => null, 'maxDate' => null, 'localWindowDays' => null])
 
 <div
     x-data="{
@@ -7,8 +7,24 @@
         selected: @js($value ?: $today),
         month: @js(substr((string) ($value ?: $today), 0, 7)),
         today: @js($today),
+        minDate: @js($minDate),
+        maxDate: @js($maxDate),
+        localWindowDays: @js($localWindowDays),
         weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+        get todayDate() {
+            return this.localWindowDays === null ? this.today : this.formatDate(new Date());
+        },
+        get minimumDate() {
+            return this.minDate ?? (this.localWindowDays === null ? null : this.todayDate);
+        },
+        get maximumDate() {
+            if (this.maxDate) return this.maxDate;
+            if (this.localWindowDays === null) return null;
+            const date = new Date();
+            date.setDate(date.getDate() + this.localWindowDays);
+            return this.formatDate(date);
+        },
         get monthLabel() {
             const [year, month] = this.month.split('-').map(Number);
             return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
@@ -23,6 +39,12 @@
             if (!this.selected) return 'Choose a date';
             const [year, month, day] = this.selected.split('-').map(Number);
             return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(year, month - 1, day));
+        },
+        formatDate(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        },
+        isDateDisabled(date) {
+            return !date || (this.minimumDate && date < this.minimumDate) || (this.maximumDate && date > this.maximumDate);
         },
         shiftMonth(amount) {
             const [year, month] = this.month.split('-').map(Number);
@@ -39,6 +61,7 @@
             this.panel = 'days';
         },
         choose(date) {
+            if (this.isDateDisabled(date)) return;
             this.selected = date;
             this.month = date.slice(0, 7);
             this.open = false;
@@ -72,7 +95,7 @@
             <template x-for="weekday in weekdays" :key="weekday"><span class="py-1.5 text-[0.65rem] font-bold uppercase tracking-wide text-[#171323]/40 dark:text-white/40" x-text="weekday"></span></template>
             <template x-for="(day, index) in days" :key="day || `empty-${index}`">
                 <span>
-                    <button x-show="day" type="button" @click="choose(day)" :aria-label="day" :aria-pressed="selected === day" :class="selected === day ? 'bg-violet-600 font-semibold text-white shadow-md shadow-violet-600/20' : 'text-[#171323]/75 hover:bg-violet-50 hover:text-violet-700 dark:text-white/75 dark:hover:bg-violet-400/10 dark:hover:text-violet-200'" class="grid size-9 cursor-pointer place-items-center rounded-xl text-sm tabular-nums transition" x-text="day ? Number(day.slice(-2)) : ''"></button>
+                    <button x-show="day" type="button" @click="choose(day)" :disabled="isDateDisabled(day)" :aria-label="day" :aria-pressed="selected === day" :class="isDateDisabled(day) ? 'cursor-not-allowed text-[#171323]/20 dark:text-white/20' : selected === day ? 'bg-violet-600 font-semibold text-white shadow-md shadow-violet-600/20' : 'text-[#171323]/75 hover:bg-violet-50 hover:text-violet-700 dark:text-white/75 dark:hover:bg-violet-400/10 dark:hover:text-violet-200'" class="grid size-9 cursor-pointer place-items-center rounded-xl text-sm tabular-nums transition disabled:cursor-not-allowed" x-text="day ? Number(day.slice(-2)) : ''"></button>
                 </span>
             </template>
         </div>
@@ -82,7 +105,7 @@
             </template>
         </div>
         <div class="mt-3 border-t border-[#171323]/8 pt-3 text-right dark:border-white/10">
-            <button type="button" @click="choose(today)" class="cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-400/10">Today</button>
+            <button type="button" @click="choose(todayDate)" :disabled="isDateDisabled(todayDate)" class="cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-violet-300 dark:hover:bg-violet-400/10">Today</button>
         </div>
     </div>
 </div>

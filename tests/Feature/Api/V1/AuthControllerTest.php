@@ -10,6 +10,18 @@ class AuthControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_registration_is_rate_limited_and_invalid_attempts_do_not_create_accounts(): void
+    {
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->postJson('/api/v1/auth/register', [])->assertUnprocessable();
+        }
+
+        $this->postJson('/api/v1/auth/register', [])->assertTooManyRequests();
+
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('tenants', 0);
+    }
+
     public function test_registration_creates_an_owner_and_returns_a_token(): void
     {
         $response = $this->postJson('/api/v1/auth/register', [

@@ -24,11 +24,11 @@ Route::get('/health/ready', function () {
 })->name('health.ready');
 
 Route::get('/login', [WebAuthController::class, 'create'])->name('login');
-Route::post('/login', [WebAuthController::class, 'store']);
-Route::get('/auth/google/redirect', [WebAuthController::class, 'redirectToGoogle'])->name('auth.google.redirect');
-Route::get('/auth/google/callback', [WebAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+Route::post('/login', [WebAuthController::class, 'store'])->middleware('throttle:web-login');
+Route::get('/auth/google/redirect', [WebAuthController::class, 'redirectToGoogle'])->middleware('throttle:web-login')->name('auth.google.redirect');
+Route::get('/auth/google/callback', [WebAuthController::class, 'handleGoogleCallback'])->middleware('throttle:web-login')->name('auth.google.callback');
 Route::get('/register', [WebAuthController::class, 'register'])->name('register');
-Route::post('/register', [WebAuthController::class, 'createWorkspace']);
+Route::post('/register', [WebAuthController::class, 'createWorkspace'])->middleware('throttle:registration');
 Route::post('/logout', [WebAuthController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::middleware('auth')->group(function (): void {
     Route::prefix('workspace')->group(function (): void {
@@ -47,7 +47,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/settings', fn () => view('workspace.settings'))->name('workspace.settings');
     });
 
-    Route::redirect('/dashboard', '/workspace/workflow/overview')->name('dashboard');
+    Route::redirect('/dashboard', '/workspace/overview')->name('dashboard');
     Route::redirect('/calendar', '/workspace/calendar');
     Route::redirect('/appointments/export', '/workspace/appointments/export');
     Route::get('/appointments/{appointmentId}/calendar', fn (int $appointmentId) => redirect()->route('workspace.appointments.calendar', $appointmentId));

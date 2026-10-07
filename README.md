@@ -1,58 +1,160 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Appointly
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Appointly is a multi-tenant appointment-booking application for service businesses. It brings public booking, team availability, appointment operations, customer history, and workspace reporting into one Laravel application.
 
-## About Laravel
+The web workspace is the primary product. A versioned REST API keeps future Kotlin Multiplatform clients independent from Blade and Livewire.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Screenshots
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Marketing site
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+![Appointly landing page](docs/screenshots/landing-desktop.png)
 
-## Learning Laravel
+### Public booking
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+![Responsive public booking page with live availability](docs/screenshots/booking-desktop.png)
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## What’s included
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- Public booking pages with service and bookable-team selection, timezone-aware availability, a 30-day booking window, and conflict-safe appointment requests.
+- Authenticated workspace pages for overview, calendar, appointments, services, team, customers, reports, and settings.
+- Tenant-scoped appointment transitions, customer history, schedule exceptions, working hours, and service assignments.
+- Public appointment lookup, cancellation, and rescheduling flows using opaque booking tokens.
+- Session authentication for the web app, Google sign-in, and Sanctum tokens for the REST API.
+- Workspace notifications, appointment email notifications, scheduled reminders, audit history, exports, API keys, and signed webhooks.
+- Light and dark themes, responsive layouts, Livewire navigation, and an installable web-app manifest.
 
-## Agentic Development
+Billing, external calendar synchronization, multi-location businesses, and native Android/iOS clients are roadmap items, not current capabilities.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Technology
+
+- PHP 8.3+ and Laravel 13
+- MySQL 8+
+- Livewire 4 and Blade
+- Laravel Sanctum and Socialite
+- Tailwind CSS 4, Vite, Alpine.js, and Feather icons
+- PHPUnit 12
+
+## Get started
+
+### Requirements
+
+- PHP 8.3 or newer with the extensions required by Laravel and `pdo_mysql`
+- Composer
+- MySQL 8 or newer
+- Node.js 22+ and npm
+
+### Install
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Copy `.env.example` to `.env`, then set the application URL and MySQL connection values (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`). Generate the application key and create the schema:
 
-## Contributing
+```bash
+php artisan key:generate
+php artisan migrate
+npm install
+npm run build
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Start the Laravel server and the frontend development server in separate terminals:
 
-## Code of Conduct
+```bash
+php artisan serve
+npm run dev
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Open the application at the URL shown by `artisan serve`, register an owner account, and create a workspace. Add a service, a team member, an active service assignment, and working hours before testing public availability.
 
-## Security Vulnerabilities
+For appointment email delivery and reminders during local development, also run a queue worker and scheduler:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan queue:work --tries=3
+php artisan schedule:work
+```
 
-## License
+Configure Google OAuth credentials only if Google sign-in is needed. Configure a real mail transport for email delivery; the example environment uses the log mailer.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Main routes
+
+| Purpose | Route |
+| --- | --- |
+| Marketing site | `/` |
+| Login and registration | `/login`, `/register` |
+| Workspace overview | `/workspace/overview` |
+| Public business booking | `/business/{tenant-slug}` |
+| Public booking embed | `/embed/{tenant-slug}` |
+| Versioned REST API | `/api/v1` |
+| Liveness check | `/up` |
+| Database readiness check | `/health/ready` |
+
+Authenticated workspace URLs are tenant-scoped. `/dashboard` redirects to the workspace overview.
+
+## REST API
+
+The API is versioned under `/api/v1`. Authenticated requests use Sanctum bearer tokens and the authorized tenant context; public business and booking endpoints do not require authentication. Public availability and booking endpoints are rate-limited.
+
+Common endpoints include:
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/logout
+
+GET  /api/v1/public/businesses/{slug}
+GET  /api/v1/public/businesses/{slug}/services
+GET  /api/v1/public/businesses/{slug}/availability
+POST /api/v1/public/businesses/{slug}/appointments
+GET  /api/v1/public/appointments/{token}
+```
+
+The maintained API specification is in [`docs/api/openapi-v1.yaml`](docs/api/openapi-v1.yaml). See [`docs/api-contract.md`](docs/api-contract.md) for the API conventions and [`docs/kmp-client-guidance.md`](docs/kmp-client-guidance.md) for future client guidance.
+
+## Architecture
+
+Appointly is a pragmatic modular monolith with the dependency direction `Interfaces → Application → Domain`, with Laravel/Eloquent persistence and integrations in Infrastructure.
+
+```text
+app/
+├── Domain/          # Framework-independent rules and value objects
+├── Application/     # Booking, availability, and workspace use cases
+├── Infrastructure/ # Eloquent persistence and external integrations
+├── Http/            # API and web delivery concerns
+└── Livewire/        # Workspace and public booking interfaces
+```
+
+The REST API is independent of the Livewire UI. Appointment creation revalidates availability in a database transaction and serializes reservations by staff and local business date.
+
+## Tests and builds
+
+Run the test suite and create production assets with:
+
+```bash
+php artisan test --compact
+npm run build
+```
+
+Continuous integration runs the application tests against MySQL 8, including a simultaneous booking-conflict test, and builds the frontend assets. The race test is skipped in the default SQLite test setup; use a dedicated disposable MySQL test database to run it locally:
+
+```bash
+APPOINTLY_MYSQL_CONCURRENCY_TESTS=true php artisan test --compact --filter=MySqlConcurrentBookingTest
+```
+
+Never point the concurrency test at a production or user-data database.
+
+## Production checklist
+
+Before serving production traffic:
+
+- Set `APP_ENV=production`, `APP_DEBUG=false`, and an HTTPS `APP_URL`; keep secrets in the deployment platform’s secret store.
+- Configure MySQL, a production mail provider, and secure session cookies.
+- Run migrations as a controlled release step and build assets with `npm run build`.
+- Run a queue worker with retries and configure `schedule:run` every minute.
+- Verify `/up` and `/health/ready`, monitor failed jobs, and enable database backups.
+- Perform a test restore and confirm the backup retention and incident owner.
+- Run dependency vulnerability checks in an environment with registry access.
+
+Read the [deployment runbook](docs/deployment.md) and [product roadmap](docs/roadmap.md) before release. Production infrastructure, provider credentials, backup restoration, and monitoring must be verified in the target hosting environment; this repository cannot verify those external settings.

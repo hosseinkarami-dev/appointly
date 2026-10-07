@@ -38,5 +38,21 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('auth-attempts', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip().'|'.$request->string('email')->lower())
         );
+
+        RateLimiter::for('web-login', function (Request $request): array {
+            $email = mb_strtolower(trim((string) $request->input('email', '')));
+
+            return [
+                Limit::perMinute(10)->by($request->ip().'|'.$email),
+                Limit::perMinute(60)->by('web-login-ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('registration', function (Request $request): array {
+            return [
+                Limit::perMinute(3)->by('registration-minute:'.$request->ip()),
+                Limit::perHour(20)->by('registration-hour:'.$request->ip()),
+            ];
+        });
     }
 }

@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class PublicBookingPage extends Component
@@ -22,6 +23,9 @@ class PublicBookingPage extends Component
     public string $staffId = '';
 
     public string $date = '';
+
+    #[Locked]
+    public string $deviceTimezone = '';
 
     public string $selectedStartAt = '';
 
@@ -46,7 +50,12 @@ class PublicBookingPage extends Component
         $this->date = now($tenant->timezone)->addDay()->toDateString();
 
         $service = $tenant->services()->where('services.is_active', true)->orderBy('services.name')->first();
-        $staff = $service?->staff()->where('staff_profiles.is_active', true)->wherePivot('is_active', true)->orderBy('staff_profiles.display_name')->first();
+        $staff = $service?->staff()
+            ->where('staff_profiles.is_active', true)
+            ->wherePivot('is_active', true)
+            ->whereHas('workingHours', fn ($query) => $query->where('is_active', true))
+            ->orderBy('staff_profiles.display_name')
+            ->first();
         $this->serviceId = $service?->id ?? '';
         $this->staffId = $staff?->id ?? '';
 
@@ -82,8 +91,8 @@ class PublicBookingPage extends Component
             return;
         }
 
-        $today = CarbonImmutable::now($this->tenant->timezone)->startOfDay();
-        $lastBookableDate = $today->addDays($this->tenant->booking_horizon_days);
+        $today = CarbonImmutable::now($this->resolvedDeviceTimezone())->startOfDay();
+        $lastBookableDate = $this->lastBookableDate($this->resolvedDeviceTimezone());
 
         if ($selectedDate->lt($today) || $selectedDate->gt($lastBookableDate)) {
             $this->addError('date', 'Choose a date within this booking window.');
@@ -92,6 +101,23 @@ class PublicBookingPage extends Component
             return;
         }
 
+        $this->loadSlots(app(GetAvailableSlotsAction::class));
+    }
+
+    public function setDeviceTimezone(string $timezone): void
+    {
+        if (! in_array($timezone, \DateTimeZone::listIdentifiers(\DateTimeZone::ALL_WITH_BC), true)) {
+            return;
+        }
+
+        if ($timezone === $this->deviceTimezone) {
+            return;
+        }
+
+        $this->deviceTimezone = $timezone;
+        $this->date = CarbonImmutable::now($timezone)->addDay()->toDateString();
+        $this->selectedStartAt = '';
+        $this->resetErrorBag('date');
         $this->loadSlots(app(GetAvailableSlotsAction::class));
     }
 
@@ -104,12 +130,7 @@ class PublicBookingPage extends Component
         }
 
         try {
-            $this->availableSlots = $getAvailableSlots->handleForBookingPage(
-                $this->tenant,
-                (int) $this->serviceId,
-                (int) $this->staffId,
-                $this->date
-            );
+            $this->availableSlots = $this->slotsForDeviceDate($getAvailableSlots, $this->date);
         } catch (\Throwable) {
             $this->availableSlots = [];
         }
@@ -141,6 +162,17 @@ class PublicBookingPage extends Component
             'customerPhone' => ['nullable', 'string', 'max:50'],
             'website' => ['prohibited'],
         ]);
+
+        $selectedDeviceDate = CarbonImmutable::parse($this->selectedStartAt)
+            ->setTimezone($this->resolvedDeviceTimezone())
+            ->startOfDay();
+        $todayInDeviceTimezone = CarbonImmutable::now($this->resolvedDeviceTimezone())->startOfDay();
+
+        if ($selectedDeviceDate->lt($todayInDeviceTimezone) || $selectedDeviceDate->gt($this->lastBookableDate($this->resolvedDeviceTimezone()))) {
+            throw ValidationException::withMessages([
+                'selectedStartAt' => 'Choose a time within the next '.$this->bookingHorizonDays().' days.',
+            ]);
+        }
 
         $emailRateLimitKey = 'public-booking-email:'.$this->tenant->id.':'.hash('sha256', mb_strtolower(trim($this->customerEmail)).'|'.$this->serviceId.'|'.$this->staffId);
 
@@ -176,7 +208,9 @@ class PublicBookingPage extends Component
 
     public function render(): mixed
     {
-        $staffQuery = $this->tenant->staff()->where('is_active', true);
+        $staffQuery = $this->tenant->staff()
+            ->where('staff_profiles.is_active', true)
+            ->whereHas('workingHours', fn ($query) => $query->where('is_active', true));
 
         if ($this->serviceId !== '') {
             $staffQuery->whereHas('services', function ($query): void {
@@ -189,38 +223,29 @@ class PublicBookingPage extends Component
             'staff' => $staffQuery->orderBy('display_name')->get(),
             'calendarDays' => $this->calendarDays(),
             'availableSlotCount' => collect($this->availableSlots)->where('available', true)->count(),
+            'deviceTimezone' => $this->deviceTimezone,
+            'bookingHorizonDays' => $this->bookingHorizonDays(),
         ]);
     }
 
     /** @return list<array{date: string, day: string, month: string, number: string, available: int, selected: bool}> */
     private function calendarDays(): array
     {
-        $today = CarbonImmutable::now($this->tenant->timezone)->startOfDay();
-        $dayCount = min(21, $this->tenant->booking_horizon_days + 1);
-        $lastBookableDate = $today->addDays($this->tenant->booking_horizon_days);
-        $latestStartDate = $lastBookableDate->subDays($dayCount - 1);
-        $start = $today;
-
-        $selectedDate = $this->selectedCalendarDate();
-
-        if ($selectedDate?->betweenIncluded($today, $lastBookableDate)) {
-            $start = $selectedDate->subDays(3)->max($today)->min($latestStartDate);
-        }
+        $today = CarbonImmutable::now($this->resolvedDeviceTimezone())->startOfDay();
+        $dayCount = $this->bookingHorizonDays() + 1;
 
         $days = [];
 
         for ($offset = 0; $offset < $dayCount; $offset++) {
-            $day = $start->addDays($offset);
+            $day = $today->addDays($offset);
             $available = 0;
 
             if ($this->serviceId !== '' && $this->staffId !== '') {
                 try {
-                    $available = count(app(GetAvailableSlotsAction::class)->handle(
-                        $this->tenant,
-                        (int) $this->serviceId,
-                        (int) $this->staffId,
+                    $available = collect($this->slotsForDeviceDate(
+                        app(GetAvailableSlotsAction::class),
                         $day->toDateString(),
-                    ));
+                    ))->where('available', true)->count();
                 } catch (\Throwable) {
                     $available = 0;
                 }
@@ -246,11 +271,61 @@ class PublicBookingPage extends Component
         }
 
         try {
-            $selectedDate = CarbonImmutable::parse($this->date, $this->tenant->timezone)->startOfDay();
+            $selectedDate = CarbonImmutable::parse($this->date, $this->resolvedDeviceTimezone())->startOfDay();
         } catch (InvalidFormatException) {
             return null;
         }
 
         return $selectedDate->toDateString() === $this->date ? $selectedDate : null;
+    }
+
+    /** @return list<array{staffId: int, startAt: string, endAt: string}|array{staffId: int, startAt: string, endAt: string, available: bool}> */
+    private function slotsForDeviceDate(GetAvailableSlotsAction $getAvailableSlots, string $date): array
+    {
+        $deviceTimezone = $this->resolvedDeviceTimezone();
+        $deviceDate = CarbonImmutable::parse($date, $deviceTimezone)->startOfDay();
+        $firstBusinessDate = $deviceDate->utc()->setTimezone($this->tenant->timezone)->startOfDay();
+        $lastBusinessDate = $deviceDate->addDay()->subSecond()->utc()->setTimezone($this->tenant->timezone)->startOfDay();
+        $latestBusinessDate = $this->lastBookableDate($this->tenant->timezone);
+        $slots = [];
+
+        for ($businessDate = $firstBusinessDate; $businessDate->lessThanOrEqualTo($lastBusinessDate); $businessDate = $businessDate->addDay()) {
+            $businessDateSlots = $getAvailableSlots->handleForBookingPage(
+                $this->tenant,
+                (int) $this->serviceId,
+                (int) $this->staffId,
+                $businessDate->toDateString(),
+            );
+
+            foreach ($businessDateSlots as $slot) {
+                $startAt = CarbonImmutable::parse($slot['startAt']);
+                $businessLocalDate = $startAt->setTimezone($this->tenant->timezone)->startOfDay();
+
+                if ($startAt->isPast() || $businessLocalDate->gt($latestBusinessDate)) {
+                    $slot['available'] = false;
+                }
+
+                if ($startAt->setTimezone($deviceTimezone)->toDateString() === $date) {
+                    $slots[] = $slot;
+                }
+            }
+        }
+
+        return $slots;
+    }
+
+    private function resolvedDeviceTimezone(): string
+    {
+        return $this->deviceTimezone !== '' ? $this->deviceTimezone : $this->tenant->timezone;
+    }
+
+    private function bookingHorizonDays(): int
+    {
+        return min(30, max(0, $this->tenant->booking_horizon_days));
+    }
+
+    private function lastBookableDate(string $timezone): CarbonImmutable
+    {
+        return CarbonImmutable::now($timezone)->startOfDay()->addDays($this->bookingHorizonDays());
     }
 }

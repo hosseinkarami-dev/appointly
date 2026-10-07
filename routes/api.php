@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('request.id')->group(function (): void {
     Route::prefix('auth')->group(function (): void {
-        Route::post('/register', [AuthController::class, 'register']);
+        Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:registration');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-attempts');
 
         Route::middleware('auth:sanctum')->group(function (): void {

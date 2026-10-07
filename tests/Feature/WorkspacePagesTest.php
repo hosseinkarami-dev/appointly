@@ -27,12 +27,12 @@ class WorkspacePagesTest extends TestCase
 
         $this->actingAs($user);
 
-        foreach (['/workspace/workflow/overview', '/workspace/calendar', '/workspace/appointments', '/workspace/services', '/workspace/team', '/workspace/customers', '/workspace/reports', '/workspace/settings'] as $path) {
+        foreach (['/workspace/overview', '/workspace/calendar', '/workspace/appointments', '/workspace/services', '/workspace/team', '/workspace/customers', '/workspace/reports', '/workspace/settings'] as $path) {
             $this->get($path)->assertOk();
         }
 
-        $this->get('/workspace')->assertRedirect('/workspace/workflow/overview');
-        $this->get('/dashboard')->assertRedirect('/workspace/workflow/overview');
+        $this->get('/workspace')->assertRedirect('/workspace/overview');
+        $this->get('/dashboard')->assertRedirect('/workspace/overview');
         $this->get('/settings')->assertRedirect('/workspace/settings');
 
         $this->get('/embed/north-clinic')->assertOk();

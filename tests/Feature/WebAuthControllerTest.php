@@ -15,6 +15,26 @@ class WebAuthControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_web_login_is_rate_limited_by_email_and_ip(): void
+    {
+        $credentials = ['email' => 'attempts@example.test', 'password' => 'invalid-password'];
+
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->post('/login', $credentials)->assertSessionHasErrors('email');
+        }
+
+        $this->post('/login', $credentials)->assertStatus(429);
+    }
+
+    public function test_web_registration_is_rate_limited_by_ip(): void
+    {
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->post('/register', [])->assertSessionHasErrors();
+        }
+
+        $this->post('/register', [])->assertStatus(429);
+    }
+
     public function test_google_callback_creates_a_workspace_and_logs_the_user_in(): void
     {
         $googleUser = GoogleUser::fake([
@@ -29,7 +49,7 @@ class WebAuthControllerTest extends TestCase
 
         $response = $this->get('/auth/google/callback');
 
-        $response->assertRedirect('/workspace/workflow/overview');
+        $response->assertRedirect('/workspace/overview');
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', [
             'email' => 'ada@example.com',
@@ -53,7 +73,7 @@ class WebAuthControllerTest extends TestCase
 
         Socialite::shouldReceive('driver')->once()->with('google')->andReturn($provider);
 
-        $this->get('/auth/google/callback')->assertRedirect('/workspace/workflow/overview');
+        $this->get('/auth/google/callback')->assertRedirect('/workspace/overview');
 
         $this->assertAuthenticatedAs($user);
         $this->assertDatabaseHas('users', [
@@ -76,7 +96,7 @@ class WebAuthControllerTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->actingAs($user)->get('/workspace/workflow/overview')->assertOk();
+        $this->actingAs($user)->get('/workspace/overview')->assertOk();
         $this->get('/admin')->assertNotFound();
     }
 }

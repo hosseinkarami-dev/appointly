@@ -64,6 +64,9 @@ jobs:
       - name: Audit production JavaScript dependencies
         run: npm audit --omit=dev
 
+      - name: Build production assets
+        run: npm run build
+
       - name: Prepare database
         run: |
           cp .env.example .env
@@ -72,6 +75,3 @@ jobs:
 
       - name: Run application tests
         run: php artisan test --compact
-
-      - name: Build production assets
-        run: npm run build
